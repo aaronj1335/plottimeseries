@@ -1,24 +1,22 @@
 import React, { useRef } from 'react';
-import { DataPoint } from '../utils/csvParser';
-import { NumberFormatter } from '../utils/numberFormatting';
+import { FormattedDataPoint } from '../utils/numberFormatting';
 import { formatColumnName } from '../utils/textFormatting';
 
 interface DataTableProps {
-  data: DataPoint[];
+  formattedData: FormattedDataPoint[];
   columns: string[];
   hoveredDate: Date | null;
   onHover: (date: Date | null) => void;
-  formatters: Record<string, NumberFormatter>;
 }
 
-export const DataTable: React.FC<DataTableProps> = ({ data, columns, hoveredDate, onHover, formatters }) => {
+export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, hoveredDate, onHover }) => {
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Auto-scroll to highlighted row is tricky without interfering with manual scroll.
   // We'll just highlight for now.
 
   return (
-      <table ref={tableRef} style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
+      <table ref={tableRef} style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', marginTop: '-43px' }}>
         <thead style={{ position: 'sticky', top: 0, background: '#1a1a1a', zIndex: 10 }}>
           <tr>
             <th style={{ position: 'sticky', top: 0, padding: '12px', textAlign: 'left', borderBottom: '1px solid #555' }}>Date</th>
@@ -28,7 +26,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data, columns, hoveredDate
           </tr>
         </thead>
         <tbody>
-          {data.map((row, i) => {
+          {formattedData.map((row, i) => {
              const isHighlighted = hoveredDate && row.date.getTime() === hoveredDate.getTime();
              return (
                <tr 
@@ -39,7 +37,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data, columns, hoveredDate
                  <td style={{ padding: '8px', textAlign: 'left' }}>{row.date.toISOString().split('T')[0]}</td>
                  {columns.map(col => (
                    <td key={col} style={{ padding: '8px' }}>
-                    {formatters[col] ? formatters[col](row[col] as number) : String(row[col])}
+                    {row[col] as string}
                   </td>
                  ))}
                </tr>

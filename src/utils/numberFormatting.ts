@@ -2,6 +2,11 @@ import { DataPoint } from './csvParser';
 
 export type NumberFormatter = (val: number) => string;
 
+export interface FormattedDataPoint {
+  date: Date;
+  [key: string]: string | Date;
+}
+
 export function analyzeColumnFormatters(data: DataPoint[], columns: string[]): Record<string, NumberFormatter> {
   const formatters: Record<string, NumberFormatter> = {};
 

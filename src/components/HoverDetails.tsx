@@ -1,29 +1,26 @@
 import React from 'react';
-import { DataPoint } from '../utils/csvParser';
-import { NumberFormatter } from '../utils/numberFormatting';
+import { FormattedDataPoint } from '../utils/numberFormatting';
 import { formatColumnName } from '../utils/textFormatting';
 
 interface HoverDetailsProps {
-  data: DataPoint[];
+  formattedData: FormattedDataPoint[];
   hoveredDate: Date | null;
   columns: string[];
   columnColors: Record<string, string>;
   isolatedSeries: string | null;
   onSelectSeries: (series: string) => void;
-  formatters: Record<string, NumberFormatter>;
 }
 
 export const HoverDetails: React.FC<HoverDetailsProps> = ({
-  data,
+  formattedData,
   hoveredDate,
   columns,
   columnColors,
   isolatedSeries,
   onSelectSeries,
-  formatters,
 }) => {
-  const currentInitialData = hoveredDate 
-    ? data.find(d => d.date.getTime() === hoveredDate.getTime()) 
+  const currentData = hoveredDate 
+    ? formattedData.find(d => d.date.getTime() === hoveredDate.getTime()) 
     : null;
 
   return (
@@ -87,7 +84,7 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
                   opacity: isolatedSeries && isolatedSeries !== col ? 0.5 : 1
                 }}
               >
-                {currentInitialData ? formatters[col](currentInitialData[col] as number) : '-'}
+                {currentData ? (currentData[col] as string) : '-'}
               </td>
             ))}
           </tr>

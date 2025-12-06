@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { parseCSV, DataPoint } from './utils/csvParser';
-import { analyzeColumnFormatters, NumberFormatter } from './utils/numberFormatting';
+import { analyzeColumnFormatters, NumberFormatter, FormattedDataPoint } from './utils/numberFormatting';
 import { TimeSeriesChart } from './components/TimeSeriesChart';
 import { HoverDetails } from './components/HoverDetails';
 import { DataTable } from './components/DataTable';
@@ -68,6 +68,21 @@ function App() {
     return colors;
   }, [columns]);
 
+  // Pre-format data for performance
+  const formattedData = useMemo<FormattedDataPoint[]>(() => {
+    if (!data.length || Object.keys(formatters).length === 0) return [];
+    return data.map(row => {
+      const formattedRow = { date: row.date } as FormattedDataPoint;
+      columns.forEach(col => {
+        const val = row[col];
+        formattedRow[col] = typeof val === 'number' && formatters[col] 
+          ? formatters[col](val) 
+          : String(val);
+      });
+      return formattedRow;
+    });
+  }, [data, columns, formatters]);
+
   // Handlers
   const handleSelectSeries = (series: string) => {
     setIsolatedSeries(prev => prev === series ? null : series);
@@ -95,21 +110,19 @@ function App() {
           columnColors={columnColors}
         />
         <HoverDetails
-          data={data}
+          formattedData={formattedData}
           hoveredDate={hoveredDate}
           columns={columns}
           columnColors={columnColors}
           isolatedSeries={isolatedSeries}
           onSelectSeries={handleSelectSeries}
-          formatters={formatters}
         />
       </div>
       <DataTable
-        data={data}
+        formattedData={formattedData}
         columns={columns}
         hoveredDate={hoveredDate}
         onHover={setHoveredDate}
-        formatters={formatters}
       />
     </div>
   );
