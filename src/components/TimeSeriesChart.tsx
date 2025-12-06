@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { DataPoint } from '../utils/csvParser';
 
@@ -26,10 +26,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Filter columns if isolated
-  const activeColumns = useMemo(() => {
-    return isolatedSeries ? [isolatedSeries] : columns;
-  }, [columns, isolatedSeries]);
+
 
   useEffect(() => {
     if (!containerRef.current || !svgRef.current || !data.length) return;
@@ -82,6 +79,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       .range([innerHeight, 0]);
 
     // 3. Transitions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const t = svg.transition().duration(750) as unknown as d3.Transition<any, any, any, any>;
 
     // Horizontal Grid
@@ -112,7 +110,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       .attr('fill', 'none')
       .attr('stroke-width', 1.5)
       .attr('stroke', col => columnColors[col])
-      .attr('d', col => {
+      .attr('d', () => {
           // Start from zero line
           return zeroLineGenerator(data) || '';
       })
