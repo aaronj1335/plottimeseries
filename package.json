@@ -1,0 +1,38 @@
+{
+  "name": "plottimeseries",
+  "version": "1.0.0",
+  "description": "A Node.js project to visualize time series data from CSV files using React and D3.js. This project provides both a rich development environment and a standalone CLI utility for generating reports.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "build": "node scripts/plot-csv.js",
+    "lint": "eslint src",
+    "type-check": "tsc --noEmit",
+    "test": "tsx --test src/**/*.test.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "d3": "^7.9.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
+    "@typescript-eslint/parser": "^8.48.1",
+    "esbuild": "^0.27.1",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.1"
+  }
+}
