@@ -16,7 +16,7 @@ export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, ho
   // We'll just highlight for now.
 
   return (
-      <table ref={tableRef} style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', marginTop: '-43px' }}>
+      <table ref={tableRef} style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
         <thead style={{ position: 'sticky', top: 0, background: '#1a1a1a', zIndex: 10 }}>
           <tr>
             <th style={{ position: 'sticky', top: 0, padding: '12px', textAlign: 'left', borderBottom: '1px solid #555' }}>Date</th>
@@ -34,7 +34,7 @@ export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, ho
                  style={{ backgroundColor: isHighlighted ? '#444' : (i % 2 === 0 ? '#2a2a2a' : '#242424') }}
                  onMouseEnter={() => onHover(row.date)}
                >
-                 <td style={{ padding: '8px', textAlign: 'left' }}>{row.date.toISOString().split('T')[0]}</td>
+                 <td style={{ padding: '8px', textAlign: 'left' }}>{row.formattedDate}</td>
                  {columns.map(col => (
                    <td key={col} style={{ padding: '8px' }}>
                     {row[col] as string}

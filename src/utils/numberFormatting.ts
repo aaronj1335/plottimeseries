@@ -4,6 +4,7 @@ export type NumberFormatter = (val: number) => string;
 
 export interface FormattedDataPoint {
   date: Date;
+  formattedDate: string;
   [key: string]: string | Date;
 }
 

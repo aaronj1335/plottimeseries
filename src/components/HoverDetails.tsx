@@ -73,7 +73,7 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
           {/* Row of Values */}
           <tr>
             <td style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>
-               {hoveredDate ? hoveredDate.toISOString().split('T')[0] : '-'}
+               {currentData ? currentData.formattedDate : '-'}
             </td>
             {columns.map(col => (
               <td 

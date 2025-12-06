@@ -72,7 +72,10 @@ function App() {
   const formattedData = useMemo<FormattedDataPoint[]>(() => {
     if (!data.length || Object.keys(formatters).length === 0) return [];
     return data.map(row => {
-      const formattedRow = { date: row.date } as FormattedDataPoint;
+      const formattedRow = { 
+        date: row.date,
+        formattedDate: row.date.toISOString().split('T')[0]
+      } as FormattedDataPoint;
       columns.forEach(col => {
         const val = row[col];
         formattedRow[col] = typeof val === 'number' && formatters[col] 
