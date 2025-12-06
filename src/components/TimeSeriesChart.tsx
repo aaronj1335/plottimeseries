@@ -36,76 +36,106 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
     const container = containerRef.current;
     const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
 
     const width = container.clientWidth;
-    const height = Math.max(300, Math.min(700, window.innerHeight * 0.66)); // 66vh, clamped 300-700
+    const height = Math.max(300, Math.min(700, window.innerHeight * 0.66));
     const margin = { top: 20, right: 30, bottom: 30, left: 80 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
-    svg.attr('width', width).attr('height', height);
+    // 1. Setup Groups (Idempotent)
+    let g = svg.select<SVGGElement>('g.main-group');
+    if (g.empty()) {
+      svg.attr('width', width).attr('height', height);
+      g = svg.append('g').attr('class', 'main-group')
+             .attr('transform', `translate(${margin.left},${margin.top})`);
+      
+      // Order matters for layering
+      g.append('g').attr('class', 'grid-h').style('opacity', 0.2);
+      g.append('g').attr('class', 'axis-x').attr('transform', `translate(0,${innerHeight})`);
+      g.append('g').attr('class', 'axis-y');
+      g.append('g').attr('class', 'lines-group');
+      g.append('line').attr('class', 'cursor-rule')
+        .attr('stroke', 'white').attr('stroke-width', 1).attr('stroke-dasharray', '4 4').style('opacity', 0);
+      g.append('rect').attr('class', 'hover-overlay')
+        .attr('width', innerWidth).attr('height', innerHeight).attr('fill', 'transparent');
+    } else {
+        // Just update dimensions if needed (simplified: assuming width/height don't change rapidly for now)
+        // ideally we'd update attributes here too
+    }
 
-    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-
-    // Scales
+    // 2. Scales
     const x = d3.scaleTime()
       .domain(d3.extent(data, d => d.date) as [Date, Date])
       .range([0, innerWidth]);
 
-    const globalMax = d3.max(data, d => Math.max(...activeColumns.map(c => d[c] as number))) || 0;
+    // Calculate Y domain based on isolation
+    let yMax = 0;
+    if (isolatedSeries) {
+        yMax = d3.max(data, d => d[isolatedSeries as string] as number) || 0;
+    } else {
+        yMax = d3.max(data, d => Math.max(...columns.map(c => d[c] as number))) || 0;
+    }
+
     const y = d3.scaleLinear()
-      .domain([0, globalMax])
+      .domain([0, yMax])
       .range([innerHeight, 0]);
 
-    // Grid (Horizontal)
-    g.append('g')
-      .style('opacity', 0.2)
-      .call(d3.axisLeft(y)
-        .tickSize(-innerWidth)
-        .tickFormat(() => '')
-      )
+    // 3. Transitions
+    const t = svg.transition().duration(750) as unknown as d3.Transition<any, any, any, any>;
+
+    // Horizontal Grid
+    g.select<SVGGElement>('.grid-h')
+      .transition(t)
+      .call(d3.axisLeft(y).tickSize(-innerWidth).tickFormat(() => ''))
       .call(g => g.select('.domain').remove())
-      .selectAll('line')
-      .attr('stroke', '#fff');
+      .selectAll('line').attr('stroke', '#fff');
 
     // Axes
-    g.append('g')
-      .attr('transform', `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(x));
+    g.select<SVGGElement>('.axis-x').call(d3.axisBottom(x)); // X usually static unless data changes time range
+    g.select<SVGGElement>('.axis-y').transition(t).call(d3.axisLeft(y));
 
-    g.append('g').call(d3.axisLeft(y));
+    // 4. Lines
+    const lineGenerator = d3.line<DataPoint>().x(d => x(d.date));
+    
+    // Line for dropping to zero
+    const zeroLineGenerator = d3.line<DataPoint>().x(d => x(d.date)).y(y(0));
 
-    // Lines
-    activeColumns.forEach(col => {
-      const line = d3.line<DataPoint>()
-        .x(d => x(d.date))
-        .y(d => y(d[col] as number));
+    const linesGroup = g.select('.lines-group');
+    const lines = linesGroup.selectAll<SVGPathElement, string>('path.series-line')
+      .data(columns, d => d);
 
-      g.append('path')
-        .datum(data)
-        .attr('fill', 'none')
-        .attr('stroke', columnColors[col])
-        .attr('stroke-width', 1.5)
-        .attr('d', line);
-    });
+    // Enter
+    lines.enter()
+      .append('path')
+      .attr('class', 'series-line')
+      .attr('fill', 'none')
+      .attr('stroke-width', 1.5)
+      .attr('stroke', col => columnColors[col])
+      .attr('d', col => {
+          // Start from zero line
+          return zeroLineGenerator(data) || '';
+      })
+      .merge(lines) // Update + Enter
+      .transition(t)
+      .attr('stroke', col => columnColors[col]) // Ensure color updates if needed
+      .attr('d', col => {
+        if (isolatedSeries && isolatedSeries !== col) {
+           return zeroLineGenerator(data) || '';
+        }
+        // Active line
+        return lineGenerator.y(d => y(d[col] as number))(data) || '';
+      });
 
-    // Vertical Rule (Cursor)
-    const rule = g.append('line')
-      .attr('stroke', 'white')
-      .attr('stroke-width', 1)
-      .attr('stroke-dasharray', '4 4')
-      .style('opacity', 0); // Hidden by default
+    // Exit
+    lines.exit().remove();
 
-    // Overlay for hover
-    g.append('rect')
-      .attr('width', innerWidth)
-      .attr('height', innerHeight)
-      .attr('fill', 'transparent')
+    // 5. Interactions (Cursor & Overlay)
+    // Update overlay handlers to use fresh closure variables (data, scales)
+    g.select('.hover-overlay')
       .on('mousemove', (event) => {
         const [mx] = d3.pointer(event);
         const date = x.invert(mx);
-        // Find closest data point
         const index = d3.bisector((d: DataPoint) => d.date).left(data, date);
         const d0 = data[index - 1];
         const d1 = data[index];
@@ -115,27 +145,25 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         } else if (d1) {
             d = d1;
         }
-
-        if (d) {
-          onHover(d.date);
-        }
+        if (d) onHover(d.date);
       });
 
-    // Handle external hover prop (draw rule)
+    const rule = g.select('.cursor-rule');
     if (hoveredDate) {
        const xPos = x(hoveredDate);
-       // Ensure xPos is within range to avoid drawing outside
        if (xPos >= 0 && xPos <= innerWidth) {
            rule
-             .attr('x1', xPos)
-             .attr('x2', xPos)
-             .attr('y1', 0)
-             .attr('y2', innerHeight)
+             .attr('x1', xPos).attr('x2', xPos)
+             .attr('y1', 0).attr('y2', innerHeight)
              .style('opacity', 1);
+       } else {
+           rule.style('opacity', 0);
        }
+    } else {
+       rule.style('opacity', 0);
     }
 
-  }, [data, activeColumns, columnColors, hoveredDate, onHover]); // Re-render on these deps
+  }, [data, columns, isolatedSeries, columnColors, hoveredDate, onHover]);
 
   return (
     <div style={{
