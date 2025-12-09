@@ -2,13 +2,12 @@ import * as d3 from 'd3';
 
 export interface DataPoint {
   date: Date;
-  [key: string]: Date | number; // Dynamic series keys
+  [key: string]: Date | number | string;
 }
 
 export function parseCSV(csvString: string): { data: DataPoint[], columns: string[] } {
-  // Use d3.csvParse to get raw objects
   const rawData = d3.csvParse(csvString);
-  
+
   if (rawData.length === 0) return { data: [], columns: [] };
 
   const columns = rawData.columns.filter(c => c !== 'date');
@@ -20,7 +19,9 @@ export function parseCSV(csvString: string): { data: DataPoint[], columns: strin
 
     const point: DataPoint = { date };
     columns.forEach(col => {
-      point[col] = +(d[col] || 0);
+      const rawValue = d[col] || '';
+      const numValue = +rawValue;
+      point[col] = isNaN(numValue) ? rawValue : numValue;
     });
     return point;
   }).filter((d): d is DataPoint => d !== null);

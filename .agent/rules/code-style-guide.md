@@ -12,4 +12,6 @@ Use typescript-eslint for linting. Make all code conform to the standard typescr
 
 Add tests for code using the default node:test module.
 
-When running node scripts that have a .ts extension, just run them with the node command, do not use node-ts. The version of node installed used to run scripts 
+When running node scripts that have a .ts extension, just run them with the node command, do not use node-ts. The version of node installed used to run scripts.
+
+Do not add comments to the code you generate.
