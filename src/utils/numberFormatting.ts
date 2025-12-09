@@ -1,4 +1,4 @@
-import { DataPoint } from './csvParser';
+import type { DataPoint } from './csvParser.ts';
 
 export type NumberFormatter = (val: number) => string;
 

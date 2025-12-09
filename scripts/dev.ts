@@ -1,15 +1,16 @@
-const esbuild = require('esbuild');
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
+import * as esbuild from 'esbuild';
+import * as http from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 
+const dirName = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 3000;
-const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
+const PUBLIC_DIR = path.resolve(dirName, '..', 'public');
 
 
-// Redefine for robust live reload
-async function startRobust() {
-  const clients = [];
+async function start(): Promise<void> {
+  const clients: http.ServerResponse[] = [];
 
   const ctx = await esbuild.context({
     entryPoints: ['src/main.tsx'],
@@ -33,31 +34,31 @@ async function startRobust() {
 
   const server = http.createServer((req, res) => {
     const url = req.url;
-    let filePath;
+    let filePath: string;
 
     if (url === '/esbuild') {
-      return clients.push(
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          Connection: 'keep-alive',
-        })
-      );
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      });
+      clients.push(res);
+      return;
     } else if (req.url === '/dist/app.js.map') { // Sourcemap
-      filePath = path.resolve(__dirname, '..', 'dist', 'app.js.map');
+      filePath = path.resolve(dirName, '..', 'dist', 'app.js.map');
     } else if (req.url === '/dist/app.css') { // CSS Bundle
-      filePath = path.resolve(__dirname, '..', 'dist', 'app.css');
+      filePath = path.resolve(dirName, '..', 'dist', 'app.css');
     } else {
-      filePath = path.join(__dirname, '..', url === '/' ? 'index.html' : url);
+      filePath = path.join(dirName, '..', url === '/' ? 'index.html' : url ?? '');
     }
 
     // Check public if not found in root
     if (!fs.existsSync(filePath)) {
-      filePath = path.join(PUBLIC_DIR, url);
+      filePath = path.join(PUBLIC_DIR, url ?? '');
     }
 
     const ext = path.extname(filePath);
-    const mimeTypes = {
+    const mimeTypes: Record<string, string> = {
       '.html': 'text/html',
       '.js': 'text/javascript',
       '.css': 'text/css',
@@ -84,4 +85,4 @@ async function startRobust() {
   server.listen(PORT, () => console.log(`Listening on http://localhost:${PORT}`));
 }
 
-startRobust();
+start();

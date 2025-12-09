@@ -1,7 +1,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { formatColumnName } from './textFormatting';
+import { formatColumnName } from './textFormatting.ts';
 
 test('formatColumnName', () => {
   assert.strictEqual(formatColumnName('hello_world'), 'Hello world');
