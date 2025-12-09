@@ -1,7 +1,4 @@
 import { test } from 'node:test';
-import assert from 'node:assert';
-import fs from 'node:fs';
-import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import React from 'react';
@@ -9,15 +6,10 @@ import { format } from 'prettier';
 import { DataTable } from './DataTable.tsx';
 import { parseCSV } from '../utils/csvParser.ts';
 import { analyzeColumnFormatters, FormattedDataPoint } from '../utils/numberFormatting.ts';
+import { assertSnapshot } from '../testing/snapshot.ts';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const GOLDEN_FILE = path.join(__dirname, '__snapshots__', 'DataTable.golden.html');
+const testFilePath = fileURLToPath(import.meta.url);
 
-// CSV with:
-// - date column with date strings
-// - pct_change: values between -1 and 1 (will be formatted as percentages)
-// - amount: values from -100 to 100, mix of decimals and values between -1 and 1
-// - category: string values
 const sampleCsv = `date,pct_change,amount,category
 2023-01-01,0.15,45.5,High
 2023-01-02,-0.8,-99.25,Low
@@ -49,7 +41,7 @@ function prepareFormattedData(): { formattedData: FormattedDataPoint[]; columns:
   return { formattedData, columns };
 }
 
-function renderDataTableToString(): string {
+async function renderDataTableToString(): Promise<string> {
   const { formattedData, columns } = prepareFormattedData();
   const element = React.createElement(DataTable, {
     formattedData,
@@ -57,25 +49,11 @@ function renderDataTableToString(): string {
     hoveredDate: null,
     onHover: () => { },
   });
-  return renderToStaticMarkup(element);
+  const html = renderToStaticMarkup(element);
+  return format(html, { parser: 'html' });
 }
 
-test('DataTable renders correctly (snapshot test)', async () => {
-  const rendered = renderDataTableToString();
-  const formatted = await format(rendered, { parser: 'html' });
-
-  if (!fs.existsSync(GOLDEN_FILE)) {
-    fs.mkdirSync(path.dirname(GOLDEN_FILE), { recursive: true });
-    fs.writeFileSync(GOLDEN_FILE, formatted, 'utf-8');
-    console.log(`Golden file created at ${GOLDEN_FILE}. Re-run tests to validate.`);
-    return;
-  }
-
-  const golden = fs.readFileSync(GOLDEN_FILE, 'utf-8');
-  assert.strictEqual(
-    formatted,
-    golden,
-    'DataTable rendered output does not match golden snapshot. ' +
-    'If the change is intentional, delete the golden file and re-run tests to regenerate it.'
-  );
+test('DataTable renders correctly', async (t) => {
+  const rendered = await renderDataTableToString();
+  await assertSnapshot(t, rendered, { testFilePath, extension: '.html' });
 });
