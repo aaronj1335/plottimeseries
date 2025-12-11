@@ -12,9 +12,6 @@ interface DataTableProps {
 export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, hoveredDate, onHover }) => {
   const tableRef = useRef<HTMLTableElement>(null);
 
-  // Auto-scroll to highlighted row is tricky without interfering with manual scroll.
-  // We'll just highlight for now.
-
   return (
       <table ref={tableRef} style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
         <thead style={{ position: 'sticky', top: 0, background: '#1a1a1a', zIndex: 10 }}>
@@ -29,7 +26,7 @@ export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, ho
           {formattedData.map((row, i) => {
              const isHighlighted = hoveredDate && row.date.getTime() === hoveredDate.getTime();
              return (
-               <tr 
+               <tr
                  key={i}
                  style={{ backgroundColor: isHighlighted ? '#444' : (i % 2 === 0 ? '#2a2a2a' : '#242424') }}
                  onMouseEnter={() => onHover(row.date)}
