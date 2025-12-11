@@ -29,4 +29,15 @@ describe('CSV Parser', () => {
     assert.strictEqual(data.length, 0);
     assert.strictEqual(columns.length, 0);
   });
+
+  it('should parse dates correctly', () => {
+    const dateString = '2023-01-01';
+    const dateObject = new Date(dateString);
+
+    assert.strictEqual(dateObject.toISOString(), '2023-01-01T00:00:00.000Z');
+    assert.strictEqual(dateObject.getTimezoneOffset(), 360);
+    assert.strictEqual(Intl.DateTimeFormat().resolvedOptions().timeZone, 'America/Chicago');
+
+    assert.strictEqual(dateObject.toLocaleString(), '12/31/2022, 6:00:00 PM');
+  })
 });
