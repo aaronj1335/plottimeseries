@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import { parseCSV, DataPoint } from './utils/csvParser';
-import { analyzeColumnFormatters, NumberFormatter, FormattedDataPoint } from './utils/numberFormatting';
+import { processCSV, DataPoint, FormattedDataPoint } from './dataProcessing';
 import { TimeSeriesChart } from './components/TimeSeriesChart';
 import { HoverDetails } from './components/HoverDetails';
 import { DataTable } from './components/DataTable';
@@ -14,8 +13,8 @@ declare global {
 
 function App() {
   const [data, setData] = useState<DataPoint[]>([]);
+  const [formattedData, setFormattedData] = useState<FormattedDataPoint[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
-  const [formatters, setFormatters] = useState<Record<string, NumberFormatter>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,13 +36,10 @@ function App() {
           csvString = await response.text();
         }
 
-        const { data: parsedData, columns: parsedColumns } = parseCSV(csvString);
-        setData(parsedData);
-        setColumns(parsedColumns);
-        
-        // Compute formatters
-        const computedFormatters = analyzeColumnFormatters(parsedData, parsedColumns);
-        setFormatters(computedFormatters);
+        const result = processCSV(csvString);
+        setData(result.data);
+        setFormattedData(result.formattedData);
+        setColumns(result.columns);
         
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -67,24 +63,6 @@ function App() {
     });
     return colors;
   }, [columns]);
-
-  // Pre-format data for performance
-  const formattedData = useMemo<FormattedDataPoint[]>(() => {
-    if (!data.length || Object.keys(formatters).length === 0) return [];
-    return data.map(row => {
-      const formattedRow = { 
-        date: row.date,
-        formattedDate: row.date.toISOString().split('T')[0]
-      } as FormattedDataPoint;
-      columns.forEach(col => {
-        const val = row[col];
-        formattedRow[col] = typeof val === 'number' && formatters[col] 
-          ? formatters[col](val) 
-          : String(val);
-      });
-      return formattedRow;
-    });
-  }, [data, columns, formatters]);
 
   // Handlers
   const handleSelectSeries = (series: string) => {

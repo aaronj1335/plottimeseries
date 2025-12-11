@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
-import { FormattedDataPoint } from '../utils/numberFormatting';
-import { formatColumnName } from '../utils/textFormatting';
+import { FormattedDataPoint, formatColumnName } from '../dataProcessing';
 
 interface DataTableProps {
   formattedData: FormattedDataPoint[];

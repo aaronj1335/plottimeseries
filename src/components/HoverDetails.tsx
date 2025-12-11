@@ -1,6 +1,5 @@
 import React from 'react';
-import { FormattedDataPoint } from '../utils/numberFormatting';
-import { formatColumnName } from '../utils/textFormatting';
+import { FormattedDataPoint, formatColumnName } from '../dataProcessing';
 
 interface HoverDetailsProps {
   formattedData: FormattedDataPoint[];
