@@ -25,7 +25,7 @@ function prepareFormattedData(): { formattedData: FormattedDataPoint[]; columns:
   const formattedData: FormattedDataPoint[] = data.map(row => {
     const formatted: FormattedDataPoint = {
       date: row.date,
-      formattedDate: row.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      formattedDate: row.date.toISOString().split('T')[0]
     };
     columns.forEach(col => {
       const val = row[col];
