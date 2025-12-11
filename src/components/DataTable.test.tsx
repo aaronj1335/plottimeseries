@@ -7,6 +7,7 @@ import { DataTable } from './DataTable.tsx';
 import { parseCSV } from '../utils/csvParser.ts';
 import { analyzeColumnFormatters, FormattedDataPoint } from '../utils/numberFormatting.ts';
 import { assertSnapshot } from '../testing/snapshot.ts';
+import assert from 'node:assert';
 
 const testFilePath = fileURLToPath(import.meta.url);
 
@@ -57,3 +58,14 @@ test('DataTable renders correctly', async (t) => {
   const rendered = await renderDataTableToString();
   await assertSnapshot(t, rendered, { testFilePath, extension: '.html' });
 });
+
+test('Date parsing and formatting', () => {
+  const dateString = '2023-01-01';
+  const dateObject = new Date(dateString);
+
+  assert.strictEqual(dateObject.toISOString(), '2023-01-01T00:00:00.000Z');
+  assert.strictEqual(dateObject.getTimezoneOffset(), 360);
+  assert.strictEqual(Intl.DateTimeFormat().resolvedOptions().timeZone, 'America/Chicago');
+
+  assert.strictEqual(dateObject.toLocaleString(), '12/31/2022, 6:00:00 PM');
+})
