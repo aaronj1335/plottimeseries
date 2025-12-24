@@ -27,7 +27,11 @@ jobs:
     - run: npm run lint
     - run: npm run typecheck
     - run: npm test
-    - run: npm run build public/data.csv
+    - run: mkdir -p pages-public && npm run build public/data.csv > pages-public/index.html
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: pages-public
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -45,17 +49,6 @@ jobs:
         node-version: [24.x]
     steps:
     - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
-    - run: mkdir -p pages-public && npm run build public/data.csv > pages-public/index.html
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: pages-public
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
