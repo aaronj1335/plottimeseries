@@ -33,10 +33,11 @@ async function start(): Promise<void> {
   await ctx.watch();
 
   const server = http.createServer((req, res) => {
-    const url = req.url;
+    const parsedUrl = new URL(req.url ?? '', `http://${req.headers.host}`);
+    const pathname = parsedUrl.pathname;
     let filePath: string;
 
-    if (url === '/esbuild') {
+    if (pathname === '/esbuild') {
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -44,17 +45,17 @@ async function start(): Promise<void> {
       });
       clients.push(res);
       return;
-    } else if (req.url === '/dist/app.js.map') { // Sourcemap
+    } else if (pathname === '/dist/app.js.map') { // Sourcemap
       filePath = path.resolve(dirName, '..', 'dist', 'app.js.map');
-    } else if (req.url === '/dist/app.css') { // CSS Bundle
+    } else if (pathname === '/dist/app.css') { // CSS Bundle
       filePath = path.resolve(dirName, '..', 'dist', 'app.css');
     } else {
-      filePath = path.join(dirName, '..', url === '/' ? 'index.html' : url ?? '');
+      filePath = path.join(dirName, '..', pathname === '/' ? 'index.html' : pathname);
     }
 
     // Check public if not found in root
     if (!fs.existsSync(filePath)) {
-      filePath = path.join(PUBLIC_DIR, url ?? '');
+      filePath = path.join(PUBLIC_DIR, pathname);
     }
 
     const ext = path.extname(filePath);

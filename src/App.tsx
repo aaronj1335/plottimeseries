@@ -4,6 +4,7 @@ import { processCSV, DataPoint, FormattedDataPoint } from './dataProcessing';
 import { TimeSeriesChart } from './components/TimeSeriesChart';
 import { HoverDetails } from './components/HoverDetails';
 import { DataTable } from './components/DataTable';
+import { getCSVData } from './data';
 
 declare global {
   interface Window {
@@ -27,20 +28,17 @@ function App() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        let csvString = '';
-        if (window.__INITIAL_CSV__) {
-          csvString = window.__INITIAL_CSV__;
-        } else {
+        const csvString = await getCSVData(window, async () => {
           const response = await fetch('/data.csv');
           if (!response.ok) throw new Error(`Failed to fetch data: ${response.statusText}`);
-          csvString = await response.text();
-        }
+          return response.text();
+        });
 
         const result = processCSV(csvString);
         setData(result.data);
         setFormattedData(result.formattedData);
         setColumns(result.columns);
-        
+
       } catch (err: unknown) {
         if (err instanceof Error) {
           setError(err.message);
