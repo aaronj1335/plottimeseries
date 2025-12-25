@@ -46,3 +46,23 @@ body {
   max-height: 40vh;
   width: 100%;
 }
+
+.upload-button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  font-weight: 500;
+}
+
+.upload-button:hover {
+  background-color: #2563eb;
+}
+
+.upload-button:active {
+  transform: translateY(1px);
+}

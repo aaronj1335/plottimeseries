@@ -67,6 +67,34 @@ function App() {
     setIsolatedSeries(prev => prev === series ? null : series);
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const csvString = await file.text();
+      const result = processCSV(csvString);
+
+      if (result.data.length === 0) {
+        throw new Error('No valid data found in CSV');
+      }
+
+      setData(result.data);
+      setFormattedData(result.formattedData);
+      setColumns(result.columns);
+      setIsolatedSeries(null); // Reset isolation on new data
+      setHoveredDate(null); // Reset hover on new data
+
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
 
@@ -87,6 +115,7 @@ function App() {
           isSticky={isSticky}
           onToggleSticky={() => setIsSticky(!isSticky)}
           columnColors={columnColors}
+          onFileUpload={handleFileUpload}
         />
         <HoverDetails
           formattedData={formattedData}

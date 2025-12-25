@@ -11,6 +11,7 @@ interface TimeSeriesChartProps {
   isSticky: boolean;
   onToggleSticky: () => void;
   columnColors: Record<string, string>;
+  onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
@@ -22,9 +23,11 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   isSticky,
   onToggleSticky,
   columnColors,
+  onFileUpload,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
@@ -188,10 +191,23 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       borderBottom: '1px solid #444',
       color: '#ffffff'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem' }}>
-        <label style={{ fontSize: '0.8rem', cursor: 'pointer', color: '#ffffff' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem', gap: '1rem', alignItems: 'center' }}>
+        <label style={{ fontSize: '0.8rem', cursor: 'pointer', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           <input type="checkbox" checked={isSticky} onChange={onToggleSticky} /> Sticky Plot
         </label>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="upload-button"
+        >
+          Upload CSV
+        </button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          accept=".csv"
+          onChange={onFileUpload}
+        />
       </div>
       <div ref={containerRef} className="chart-container">
         <svg ref={svgRef} style={{ display: 'block' }}></svg>
