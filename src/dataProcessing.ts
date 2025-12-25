@@ -28,11 +28,11 @@ export function parseCSV(csvString: string): { data: DataPoint[], columns: strin
 
   if (rawData.length === 0) return { data: [], columns: [] };
 
-  const columns = rawData.columns.filter(c => c !== 'date');
+  const columns = rawData.columns.filter(c => c.toLowerCase() !== 'date');
 
   const data = rawData.map((d) => {
-    if (!d.date) return null;
-    const date = new Date(d.date);
+    if (!d.date && !d.Date) return null;
+    const date = new Date(d.date || d.Date);
     if (isNaN(date.getTime())) return null;
 
     const point: DataPoint = { date };

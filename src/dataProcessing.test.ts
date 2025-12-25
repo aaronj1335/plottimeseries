@@ -41,6 +41,22 @@ describe('parseCSV', () => {
 
     assert.strictEqual(dateObject.toISOString(), '2023-01-01T00:00:00.000Z');
   });
+
+  it('should handle data with uppercase Date field', () => {
+    const csv = `Date,pct_change,amount,category
+2023-01-01,0.15,45.5,High
+2023-01-02,-0.8,-99.25,Low
+2023-01-03,0.02,0.75,Medium
+2023-01-04,1.0,100,High
+2023-01-05,-0.33,-5.5,Low
+2023-01-06,0.5,0.05,Medium`;
+    const { data } = parseCSV(csv);
+
+    assert.strictEqual(data.length, 6);
+    assert.strictEqual(data[0].pct_change, 0.15);
+    assert.strictEqual(data[0].amount, 45.5);
+    assert.strictEqual(data[0].category, 'High');
+  });
 });
 
 test('analyzeColumnFormatters', async (t) => {
