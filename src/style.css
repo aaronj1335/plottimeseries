@@ -15,8 +15,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #242424; /* Ensure bg is everywhere */
-  color: #ffffff; /* Pure white text */
+  color: #ffffff;
 }
 
 /* Ensure app container is full width */
@@ -29,12 +28,21 @@ body {
   width: 10px;
   height: 10px;
 }
+
 ::-webkit-scrollbar-track {
-  background: #2a2a2a; 
+  background: #2a2a2a;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #555; 
+  background: #555;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #888; 
+  background: #888;
+}
+
+.chart-container {
+  height: 500px;
+  max-height: 40vh;
+  width: 100%;
 }

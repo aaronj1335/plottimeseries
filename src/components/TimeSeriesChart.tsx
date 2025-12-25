@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { DataPoint } from '../dataProcessing';
 
@@ -25,17 +25,32 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      if (!entries[0]) return;
+      const { width, height } = entries[0].contentRect;
+      setDimensions({ width, height });
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
 
 
   useEffect(() => {
     if (!containerRef.current || !svgRef.current || !data.length) return;
 
-    const container = containerRef.current;
     const svg = d3.select(svgRef.current);
 
-    const width = container.clientWidth;
-    const height = Math.max(300, Math.min(700, window.innerHeight * 0.66));
+    const width = dimensions.width;
+    const height = dimensions.height;
+    if (width === 0 || height === 0) return;
+
     const margin = { top: 20, right: 30, bottom: 30, left: 80 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
@@ -43,10 +58,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     // 1. Setup Groups (Idempotent)
     let g = svg.select<SVGGElement>('g.main-group');
     if (g.empty()) {
-      svg.attr('width', width).attr('height', height);
-      g = svg.append('g').attr('class', 'main-group')
-             .attr('transform', `translate(${margin.left},${margin.top})`);
-      
+      g = svg.append('g').attr('class', 'main-group');
+
       // Order matters for layering
       g.append('g').attr('class', 'grid-h').style('opacity', 0.2);
       g.append('g').attr('class', 'axis-x').attr('transform', `translate(0,${innerHeight})`);
@@ -56,10 +69,14 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         .attr('stroke', 'white').attr('stroke-width', 1).attr('stroke-dasharray', '4 4').style('opacity', 0);
       g.append('rect').attr('class', 'hover-overlay')
         .attr('width', innerWidth).attr('height', innerHeight).attr('fill', 'transparent');
-    } else {
-        // Just update dimensions if needed (simplified: assuming width/height don't change rapidly for now)
-        // ideally we'd update attributes here too
     }
+
+    svg.attr('width', width).attr('height', height);
+    g.attr('transform', `translate(${margin.left},${margin.top})`);
+
+    // Update axes positions if dimensions changed
+    g.select<SVGGElement>('.axis-x').attr('transform', `translate(0,${innerHeight})`);
+    g.select<SVGGElement>('.hover-overlay').attr('width', innerWidth).attr('height', innerHeight);
 
     // 2. Scales
     const x = d3.scaleTime()
@@ -69,9 +86,9 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     // Calculate Y domain based on isolation
     let yMax = 0;
     if (isolatedSeries) {
-        yMax = d3.max(data, d => d[isolatedSeries as string] as number) || 0;
+      yMax = d3.max(data, d => d[isolatedSeries as string] as number) || 0;
     } else {
-        yMax = d3.max(data, d => Math.max(...columns.map(c => d[c] as number))) || 0;
+      yMax = d3.max(data, d => Math.max(...columns.map(c => d[c] as number))) || 0;
     }
 
     const y = d3.scaleLinear()
@@ -95,7 +112,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
     // 4. Lines
     const lineGenerator = d3.line<DataPoint>().x(d => x(d.date));
-    
+
     // Line for dropping to zero
     const zeroLineGenerator = d3.line<DataPoint>().x(d => x(d.date)).y(y(0));
 
@@ -111,15 +128,15 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       .attr('stroke-width', 1.5)
       .attr('stroke', col => columnColors[col])
       .attr('d', () => {
-          // Start from zero line
-          return zeroLineGenerator(data) || '';
+        // Start from zero line
+        return zeroLineGenerator(data) || '';
       })
       .merge(lines) // Update + Enter
       .transition(t)
       .attr('stroke', col => columnColors[col]) // Ensure color updates if needed
       .attr('d', col => {
         if (isolatedSeries && isolatedSeries !== col) {
-           return zeroLineGenerator(data) || '';
+          return zeroLineGenerator(data) || '';
         }
         // Active line
         return lineGenerator.y(d => y(d[col] as number))(data) || '';
@@ -139,29 +156,29 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         const d1 = data[index];
         let d = d0;
         if (d1 && d0) {
-           d = (date.getTime() - d0.date.getTime() > d1.date.getTime() - date.getTime()) ? d1 : d0;
+          d = (date.getTime() - d0.date.getTime() > d1.date.getTime() - date.getTime()) ? d1 : d0;
         } else if (d1) {
-            d = d1;
+          d = d1;
         }
         if (d) onHover(d.date);
       });
 
     const rule = g.select('.cursor-rule');
     if (hoveredDate) {
-       const xPos = x(hoveredDate);
-       if (xPos >= 0 && xPos <= innerWidth) {
-           rule
-             .attr('x1', xPos).attr('x2', xPos)
-             .attr('y1', 0).attr('y2', innerHeight)
-             .style('opacity', 1);
-       } else {
-           rule.style('opacity', 0);
-       }
+      const xPos = x(hoveredDate);
+      if (xPos >= 0 && xPos <= innerWidth) {
+        rule
+          .attr('x1', xPos).attr('x2', xPos)
+          .attr('y1', 0).attr('y2', innerHeight)
+          .style('opacity', 1);
+      } else {
+        rule.style('opacity', 0);
+      }
     } else {
-       rule.style('opacity', 0);
+      rule.style('opacity', 0);
     }
 
-  }, [data, columns, isolatedSeries, columnColors, hoveredDate, onHover]);
+  }, [data, columns, isolatedSeries, columnColors, hoveredDate, onHover, dimensions]);
 
   return (
     <div style={{
@@ -176,8 +193,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           <input type="checkbox" checked={isSticky} onChange={onToggleSticky} /> Sticky Plot
         </label>
       </div>
-      <div ref={containerRef} style={{ width: '100%' }}>
-        <svg ref={svgRef}></svg>
+      <div ref={containerRef} className="chart-container">
+        <svg ref={svgRef} style={{ display: 'block' }}></svg>
       </div>
     </div>
   );
