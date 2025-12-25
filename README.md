@@ -2,6 +2,8 @@
 
 Tool + app for visualizing time series data.
 
+[![Screenshot of time series plot](https://aaronstacy.com/plottimeseries/img/plottimeseries-screen-shot.png)](https://aaronstacy.com/plottimeseries)
+
 ## Usage
 
 ### App

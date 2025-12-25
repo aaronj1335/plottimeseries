@@ -27,7 +27,7 @@ jobs:
     - run: npm run lint
     - run: npm run typecheck
     - run: npm test
-    - run: mkdir -p pages-public && npm run build public/data.csv > pages-public/index.html
+    - run: mkdir -p pages-public/img && npm run build public/data.csv > pages-public/index.html && cp public/plottimeseries-screen-shot.png pages-public/img/
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
