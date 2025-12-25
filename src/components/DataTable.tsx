@@ -12,7 +12,7 @@ export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, ho
   const tableRef = useRef<HTMLTableElement>(null);
 
   return (
-      <table ref={tableRef} style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
+      <table ref={tableRef} className="data-table">
         <thead style={{ position: 'sticky', top: 0, background: '#1a1a1a', zIndex: 10 }}>
           <tr>
             <th style={{ position: 'sticky', top: 0, padding: '12px', textAlign: 'left', borderBottom: '1px solid #555' }}>Date</th>

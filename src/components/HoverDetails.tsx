@@ -30,7 +30,7 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
       overflowX: 'auto',
       color: '#ffffff'
     }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem' }}>
+      <table className="data-table" style={{ fontSize: '0.9rem' }}>
         <thead>
           <tr>
             <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #555' }}>Date</th>

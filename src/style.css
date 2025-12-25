@@ -47,6 +47,18 @@ body {
   width: 100%;
 }
 
+table.data-table {
+  border-collapse: collapse;
+  text-align: right;
+  width: 100%;
+}
+
+table.data-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .upload-button {
   background-color: #3b82f6;
   color: white;
