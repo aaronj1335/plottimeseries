@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { DataPoint } from '../dataProcessing';
 
@@ -29,6 +29,12 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   const svgRef = useRef<SVGSVGElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  const plottableColumns = useMemo(() => {
+    return columns.filter(col => {
+      return data.some(row => typeof row[col] === 'number');
+    });
+  }, [columns, data]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -93,8 +99,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       yMax = d3.max(data, d => d[isolatedSeries as string] as number) || 0;
       yMin = d3.min(data, d => d[isolatedSeries as string] as number) || 0;
     } else {
-      yMax = d3.max(data, d => Math.max(...columns.map(c => d[c] as number))) || 0;
-      yMin = d3.min(data, d => Math.min(...columns.map(c => d[c] as number))) || 0;
+      yMax = d3.max(data, d => Math.max(...plottableColumns.map(c => d[c] as number))) || 0;
+      yMin = d3.min(data, d => Math.min(...plottableColumns.map(c => d[c] as number))) || 0;
     }
     if (yMin > 0) {
       yMin = 0;
@@ -127,7 +133,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
     const linesGroup = g.select('.lines-group');
     const lines = linesGroup.selectAll<SVGPathElement, string>('path.series-line')
-      .data(columns, d => d);
+      .data(plottableColumns, d => d);
 
     // Enter
     lines.enter()
@@ -187,7 +193,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       rule.style('opacity', 0);
     }
 
-  }, [data, columns, isolatedSeries, columnColors, hoveredDate, onHover, dimensions]);
+  }, [data, columns, plottableColumns, isolatedSeries, columnColors, hoveredDate, onHover, dimensions]);
 
   return (
     <div style={{
