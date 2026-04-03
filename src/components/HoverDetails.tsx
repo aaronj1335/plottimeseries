@@ -1,5 +1,5 @@
 import React from 'react';
-import { FormattedDataPoint, formatColumnName } from '../dataProcessing';
+import { FormattedDataPoint, formatColumnName, LinkData } from '../dataProcessing';
 
 interface HoverDetailsProps {
   formattedData: FormattedDataPoint[];
@@ -9,6 +9,24 @@ interface HoverDetailsProps {
   isolatedSeries: string | null;
   onSelectSeries: (series: string) => void;
 }
+
+const renderCellValue = (val: string | Date | LinkData | undefined) => {
+  if (val && typeof val === 'object' && 'linkText' in val && 'url' in val) {
+    return (
+      <a 
+        href={val.url.toString()} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        style={{ color: '#4da6ff', textDecoration: 'none' }}
+        onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+      >
+        {val.linkText}
+      </a>
+    );
+  }
+  return String(val ?? '-');
+};
 
 export const HoverDetails: React.FC<HoverDetailsProps> = ({
   formattedData,
@@ -83,7 +101,7 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
                   opacity: isolatedSeries && isolatedSeries !== col ? 0.5 : 1
                 }}
               >
-                {currentData ? (currentData[col] as string) : '-'}
+                {renderCellValue(currentData?.[col] as string | LinkData | undefined)}
               </td>
             ))}
           </tr>

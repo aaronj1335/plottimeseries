@@ -6,6 +6,7 @@ import {
   formatColumnName,
   processCSV,
   DataPoint,
+  LinkData,
 } from './dataProcessing.ts';
 
 describe('parseCSV', () => {
@@ -137,6 +138,22 @@ test('processCSV', async (t) => {
     assert.strictEqual(formattedData[1].pct_change, '-80.0%');
     assert.strictEqual(formattedData[1].amount, '-99');
     assert.strictEqual(formattedData[1].category, 'Low');
+  });
+
+  await t.test('handles markdown links', () => {
+    const csv = `date,link\n2023-01-01,[Google](https://google.com)`;
+    const { formattedData } = processCSV(csv);
+
+    const linkData = formattedData[0].link as LinkData;
+    assert.strictEqual(linkData.linkText, 'Google');
+    assert.strictEqual(linkData.url.toString(), 'https://google.com/');
+  });
+
+  await t.test('handles invalid markdown links as strings', () => {
+    const csv = `date,link\n2023-01-01,[Invalid](not-a-url)`;
+    const { formattedData } = processCSV(csv);
+
+    assert.strictEqual(formattedData[0].link, '[Invalid](not-a-url)');
   });
 
   await t.test('handles empty CSV', () => {

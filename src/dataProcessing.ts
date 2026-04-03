@@ -5,10 +5,15 @@ export interface DataPoint {
   [key: string]: Date | number | string;
 }
 
+export interface LinkData {
+  linkText: string;
+  url: URL;
+}
+
 export interface FormattedDataPoint {
   date: Date;
   formattedDate: string;
-  [key: string]: string | Date;
+  [key: string]: string | Date | LinkData;
 }
 
 export type NumberFormatter = (val: number) => string;
@@ -99,6 +104,20 @@ export function processCSV(csvString: string): { data: DataPoint[], formattedDat
       const val = row[col];
       if (typeof val === 'number' && formatters[col]) {
         formatted[col] = formatters[col](val);
+      } else if (typeof val === 'string') {
+        const linkMatch = val.match(/^\[(.*?)\]\((.*?)\)$/);
+        if (linkMatch) {
+          try {
+            formatted[col] = {
+              linkText: linkMatch[1],
+              url: new URL(linkMatch[2])
+            };
+          } catch {
+            formatted[col] = val;
+          }
+        } else {
+          formatted[col] = val;
+        }
       } else {
         formatted[col] = String(val);
       }

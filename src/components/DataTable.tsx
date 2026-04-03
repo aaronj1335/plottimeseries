@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { FormattedDataPoint, formatColumnName } from '../dataProcessing';
+import { FormattedDataPoint, formatColumnName, LinkData } from '../dataProcessing';
 
 interface DataTableProps {
   formattedData: FormattedDataPoint[];
@@ -7,6 +7,24 @@ interface DataTableProps {
   hoveredDate: Date | null;
   onHover: (date: Date | null) => void;
 }
+
+const renderCellValue = (val: string | Date | LinkData) => {
+  if (val && typeof val === 'object' && 'linkText' in val && 'url' in val) {
+    return (
+      <a 
+        href={val.url.toString()} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        style={{ color: '#4da6ff', textDecoration: 'none' }}
+        onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+      >
+        {val.linkText}
+      </a>
+    );
+  }
+  return String(val);
+};
 
 export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, hoveredDate, onHover }) => {
   const tableRef = useRef<HTMLTableElement>(null);
@@ -33,7 +51,7 @@ export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, ho
                  <td style={{ padding: '8px', textAlign: 'left' }}>{row.formattedDate}</td>
                  {columns.map(col => (
                    <td key={col} style={{ padding: '8px' }}>
-                    {row[col] as string}
+                    {renderCellValue(row[col] as string | LinkData)}
                   </td>
                  ))}
                </tr>
