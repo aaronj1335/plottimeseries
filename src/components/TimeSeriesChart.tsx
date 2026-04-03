@@ -88,14 +88,20 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
     // Calculate Y domain based on isolation
     let yMax = 0;
+    let yMin = 0;
     if (isolatedSeries) {
       yMax = d3.max(data, d => d[isolatedSeries as string] as number) || 0;
+      yMin = d3.min(data, d => d[isolatedSeries as string] as number) || 0;
     } else {
       yMax = d3.max(data, d => Math.max(...columns.map(c => d[c] as number))) || 0;
+      yMin = d3.min(data, d => Math.min(...columns.map(c => d[c] as number))) || 0;
+    }
+    if (yMin > 0) {
+      yMin = 0;
     }
 
     const y = d3.scaleLinear()
-      .domain([0, yMax])
+      .domain([yMin, yMax])
       .range([innerHeight, 0]);
 
     // 3. Transitions
