@@ -33,3 +33,18 @@ test('DataTable renders correctly', async (t) => {
   const rendered = await renderDataTableToString();
   await assertSnapshot(t, rendered, { testFilePath, extension: '.html' });
 });
+
+test('DataTable renders correctly when date column is not the first column', async (t) => {
+  const csv = `val1,date,val2\n10,2023-01-01,20`;
+  const { formattedData, columns } = processCSV(csv);
+  const element = React.createElement(DataTable, {
+    formattedData,
+    columns,
+    hoveredDate: null,
+    onHover: () => { },
+  });
+  const html = renderToStaticMarkup(element);
+  const rendered = await format(html, { parser: 'html' });
+
+  await assertSnapshot(t, rendered, { testFilePath, extension: '.html' });
+});

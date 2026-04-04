@@ -14,12 +14,18 @@ describe('parseCSV', () => {
     const csv = `date,val1,val2\n2023-01-01,10,20\n2023-01-02,15,25`;
     const { data, columns } = parseCSV(csv);
 
-    assert.deepStrictEqual(columns, ['val1', 'val2']);
+    assert.deepStrictEqual(columns, ['date', 'val1', 'val2']);
     assert.strictEqual(data.length, 2);
 
     assert.strictEqual(data[0].date.toISOString().split('T')[0], '2023-01-01');
     assert.strictEqual(data[0].val1, 10);
     assert.strictEqual(data[0].val2, 20);
+  });
+
+  it('should handle date when it is not the first column', () => {
+    const csv = `val1,date,val2\n1,2026-01-01,2`;
+    const { columns } = processCSV(csv);
+    assert.deepStrictEqual(columns, ['val1', 'date', 'val2']);
   });
 
   it('should ignore rows with invalid dates', () => {
@@ -126,7 +132,7 @@ test('processCSV', async (t) => {
 
     const { formattedData, columns } = processCSV(csv);
 
-    assert.deepStrictEqual(columns, ['pct_change', 'amount', 'category']);
+    assert.deepStrictEqual(columns, ['date', 'pct_change', 'amount', 'category']);
     assert.strictEqual(formattedData.length, 2);
 
     assert.strictEqual(formattedData[0].formattedDate, '2023-01-01');

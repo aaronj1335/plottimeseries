@@ -33,18 +33,23 @@ export function parseCSV(csvString: string): { data: DataPoint[], columns: strin
 
   if (rawData.length === 0) return { data: [], columns: [] };
 
-  const columns = rawData.columns.filter(c => c.toLowerCase() !== 'date');
+  const columns = rawData.columns;
 
   const data = rawData.map((d) => {
-    if (!d.date && !d.Date) return null;
-    const date = new Date(d.date || d.Date);
+    const dateKey = rawData.columns.find(c => c.toLowerCase() === 'date');
+    if (!dateKey || !d[dateKey]) return null;
+    const date = new Date(d[dateKey]!);
     if (isNaN(date.getTime())) return null;
 
     const point: DataPoint = { date };
     columns.forEach(col => {
-      const rawValue = d[col] || '';
-      const numValue = +rawValue;
-      point[col] = isNaN(numValue) ? rawValue : numValue;
+      if (col.toLowerCase() === 'date') {
+        point[col] = date;
+      } else {
+        const rawValue = d[col] || '';
+        const numValue = +rawValue;
+        point[col] = isNaN(numValue) ? rawValue : numValue;
+      }
     });
     return point;
   }).filter((d): d is DataPoint => d !== null);
@@ -56,6 +61,8 @@ export function analyzeColumnFormatters(data: DataPoint[], columns: string[]): R
   const formatters: Record<string, NumberFormatter> = {};
 
   columns.forEach(col => {
+    if (col.toLowerCase() === 'date') return;
+
     let min = Infinity;
     let max = -Infinity;
     let hasNumbers = false;
@@ -101,25 +108,34 @@ export function processCSV(csvString: string): { data: DataPoint[], formattedDat
       formattedDate: formatDate(row.date),
     };
     columns.forEach(col => {
-      const val = row[col];
-      if (typeof val === 'number' && formatters[col]) {
-        formatted[col] = formatters[col](val);
-      } else if (typeof val === 'string') {
-        const linkMatch = val.match(/^\[(.*?)\]\((.*?)\)$/);
-        if (linkMatch) {
-          try {
-            formatted[col] = {
-              linkText: linkMatch[1],
-              url: new URL(linkMatch[2])
-            };
-          } catch {
-            formatted[col] = val;
+      let formattedVal: string | LinkData;
+      if (col.toLowerCase() === 'date') {
+        formattedVal = formatDate(row.date);
+      } else {
+        const val = row[col];
+        if (typeof val === 'number' && formatters[col]) {
+          formattedVal = formatters[col](val);
+        } else if (typeof val === 'string') {
+          const linkMatch = val.match(/^\[(.*?)\]\((.*?)\)$/);
+          if (linkMatch) {
+            try {
+              formattedVal = {
+                linkText: linkMatch[1],
+                url: new URL(linkMatch[2])
+              };
+            } catch {
+              formattedVal = val;
+            }
+          } else {
+            formattedVal = val;
           }
         } else {
-          formatted[col] = val;
+          formattedVal = String(val);
         }
-      } else {
-        formatted[col] = String(val);
+      }
+
+      if (col !== 'date' && col !== 'formattedDate') {
+        formatted[col] = formattedVal;
       }
     });
     return formatted;
