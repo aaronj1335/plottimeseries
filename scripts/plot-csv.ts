@@ -7,16 +7,13 @@ const dirName = path.dirname(fileURLToPath(import.meta.url));
 
 async function buildAndGenerate(): Promise<void> {
   const args = process.argv.slice(2);
-  const csvPath = args[0];
+  const csvPath = args[0] != null? args[0] : 0;
 
-  if (!csvPath) {
-    console.error('Usage: node scripts/plot-csv.ts <path-to-csv>');
-    process.exit(1);
-  }
-
-  if (!fs.existsSync(csvPath)) {
-    console.error(`Error: CSV file not found: ${csvPath}`);
-    process.exit(1);
+  if (csvPath) {
+    if (!fs.existsSync(csvPath)) {
+      console.error(`Error: CSV file not found: ${csvPath}`);
+      process.exit(1);
+    }
   }
 
   console.error('Building source...');
