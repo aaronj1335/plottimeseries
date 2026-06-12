@@ -93,6 +93,23 @@ export function analyzeColumnFormatters(data: DataPoint[], columns: string[]): R
   return formatters;
 }
 
+export function spreadDuplicateDates(data: DataPoint[]): DataPoint[] {
+  const msPerDay = 24 * 60 * 60 * 1000;
+
+  const groups = new Map<number, number[]>();
+  data.forEach((d, i) => {
+    const ts = d.date.getTime();
+    groups.set(ts, [...(groups.get(ts) ?? []), i]);
+  });
+
+  return data.map((d, i) => {
+    const group = groups.get(d.date.getTime())!;
+    if (group.length <= 1) return d;
+    const pos = group.indexOf(i);
+    return { ...d, date: new Date(d.date.getTime() + Math.floor(pos * msPerDay / group.length)) };
+  });
+}
+
 export function processCSV(csvString: string): { data: DataPoint[], formattedData: FormattedDataPoint[], columns: string[] } {
   const { data, columns } = parseCSV(csvString);
   

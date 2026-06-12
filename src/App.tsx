@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import { processCSV, DataPoint, FormattedDataPoint } from './dataProcessing';
+import { processCSV, spreadDuplicateDates, DataPoint, FormattedDataPoint } from './dataProcessing';
 import { TimeSeriesChart } from './components/TimeSeriesChart';
 import { HoverDetails } from './components/HoverDetails';
 import { DataTable } from './components/DataTable';
@@ -23,6 +23,7 @@ function App() {
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
   const [isolatedSeries, setIsolatedSeries] = useState<string | null>(null);
   const [isSticky, setIsSticky] = useState(false);
+  const [spreadDates, setSpreadDates] = useState(true);
 
   // Load Data
   useEffect(() => {
@@ -51,6 +52,17 @@ function App() {
     };
     loadData();
   }, []);
+
+  // Apply date spreading
+  const displayData = useMemo(() => {
+    if (!spreadDates) return data;
+    return spreadDuplicateDates(data);
+  }, [data, spreadDates]);
+
+  const displayFormattedData = useMemo(() => {
+    if (!spreadDates) return formattedData;
+    return formattedData.map((fd, i) => ({ ...fd, date: displayData[i].date }));
+  }, [formattedData, displayData, spreadDates]);
 
   // Generate Colors
   const columnColors = useMemo(() => {
@@ -85,8 +97,8 @@ function App() {
       setData(result.data);
       setFormattedData(result.formattedData);
       setColumns(result.columns);
-      setIsolatedSeries(null); // Reset isolation on new data
-      setHoveredDate(null); // Reset hover on new data
+      setIsolatedSeries(null);
+      setHoveredDate(null);
 
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -107,18 +119,20 @@ function App() {
         backgroundColor: '#242424' // Ensure opacity
       }}>
         <TimeSeriesChart
-          data={data}
+          data={displayData}
           columns={columns}
           hoveredDate={hoveredDate}
           onHover={setHoveredDate}
           isolatedSeries={isolatedSeries}
           isSticky={isSticky}
           onToggleSticky={() => setIsSticky(!isSticky)}
+          spreadDates={spreadDates}
+          onToggleSpreadDates={() => setSpreadDates(!spreadDates)}
           columnColors={columnColors}
           onFileUpload={handleFileUpload}
         />
         <HoverDetails
-          formattedData={formattedData}
+          formattedData={displayFormattedData}
           hoveredDate={hoveredDate}
           columns={columns}
           columnColors={columnColors}
@@ -127,7 +141,7 @@ function App() {
         />
       </div>
       <DataTable
-        formattedData={formattedData}
+        formattedData={displayFormattedData}
         columns={columns}
         hoveredDate={hoveredDate}
         onHover={setHoveredDate}

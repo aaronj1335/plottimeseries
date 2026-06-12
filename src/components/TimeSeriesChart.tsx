@@ -10,6 +10,8 @@ interface TimeSeriesChartProps {
   isolatedSeries: string | null;
   isSticky: boolean;
   onToggleSticky: () => void;
+  spreadDates: boolean;
+  onToggleSpreadDates: () => void;
   columnColors: Record<string, string>;
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -22,6 +24,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   isolatedSeries,
   isSticky,
   onToggleSticky,
+  spreadDates,
+  onToggleSpreadDates,
   columnColors,
   onFileUpload,
 }) => {
@@ -206,6 +210,9 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem', gap: '1rem', alignItems: 'center' }}>
         <label style={{ fontSize: '0.8rem', cursor: 'pointer', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           <input type="checkbox" checked={isSticky} onChange={onToggleSticky} /> Sticky Plot
+        </label>
+        <label style={{ fontSize: '0.8rem', cursor: 'pointer', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <input type="checkbox" checked={spreadDates} onChange={onToggleSpreadDates} /> Spread Duplicate Dates
         </label>
         <button
           onClick={() => fileInputRef.current?.click()}

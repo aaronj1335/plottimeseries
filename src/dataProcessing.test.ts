@@ -5,6 +5,7 @@ import {
   analyzeColumnFormatters,
   formatColumnName,
   processCSV,
+  spreadDuplicateDates,
   DataPoint,
   LinkData,
 } from './dataProcessing.ts';
@@ -122,6 +123,62 @@ test('formatColumnName', () => {
   assert.strictEqual(formatColumnName('simple'), 'Simple');
   assert.strictEqual(formatColumnName('multiple_underscores_here'), 'Multiple underscores here');
   assert.strictEqual(formatColumnName(''), '');
+});
+
+test('spreadDuplicateDates', async (t) => {
+  const msPerDay = 24 * 60 * 60 * 1000;
+
+  await t.test('leaves unique dates unchanged', () => {
+    const d1 = new Date('2023-01-01');
+    const d2 = new Date('2023-01-02');
+    const data: DataPoint[] = [{ date: d1, val: 1 }, { date: d2, val: 2 }];
+    const result = spreadDuplicateDates(data);
+    assert.strictEqual(result[0].date.getTime(), d1.getTime());
+    assert.strictEqual(result[1].date.getTime(), d2.getTime());
+  });
+
+  await t.test('spreads two points on the same date 12 hours apart', () => {
+    const base = new Date('2023-01-01');
+    const data: DataPoint[] = [{ date: base, val: 1 }, { date: base, val: 2 }];
+    const result = spreadDuplicateDates(data);
+    assert.strictEqual(result[0].date.getTime(), base.getTime());
+    assert.strictEqual(result[1].date.getTime(), base.getTime() + msPerDay / 2);
+  });
+
+  await t.test('spreads three points on the same date 8 hours apart', () => {
+    const base = new Date('2023-01-01');
+    const data: DataPoint[] = [
+      { date: base, val: 1 },
+      { date: base, val: 2 },
+      { date: base, val: 3 },
+    ];
+    const result = spreadDuplicateDates(data);
+    assert.strictEqual(result[0].date.getTime(), base.getTime());
+    assert.strictEqual(result[1].date.getTime(), base.getTime() + Math.floor(msPerDay / 3));
+    assert.strictEqual(result[2].date.getTime(), base.getTime() + Math.floor(2 * msPerDay / 3));
+  });
+
+  await t.test('does not mutate the original data', () => {
+    const base = new Date('2023-01-01');
+    const data: DataPoint[] = [{ date: base, val: 1 }, { date: base, val: 2 }];
+    spreadDuplicateDates(data);
+    assert.strictEqual(data[0].date.getTime(), base.getTime());
+    assert.strictEqual(data[1].date.getTime(), base.getTime());
+  });
+
+  await t.test('handles mixed: some dates unique, some duplicated', () => {
+    const d1 = new Date('2023-01-01');
+    const d2 = new Date('2023-01-02');
+    const data: DataPoint[] = [
+      { date: d1, val: 1 },
+      { date: d2, val: 2 },
+      { date: d2, val: 3 },
+    ];
+    const result = spreadDuplicateDates(data);
+    assert.strictEqual(result[0].date.getTime(), d1.getTime());
+    assert.strictEqual(result[1].date.getTime(), d2.getTime());
+    assert.strictEqual(result[2].date.getTime(), d2.getTime() + msPerDay / 2);
+  });
 });
 
 test('processCSV', async (t) => {
