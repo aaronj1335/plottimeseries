@@ -1,11 +1,12 @@
 import React, { useRef } from 'react';
-import { FormattedDataPoint, formatColumnName, LinkData } from '../dataProcessing';
+import { ColumnStyles, FormattedDataPoint, formatColumnName, LinkData } from '../dataProcessing';
 
 interface DataTableProps {
   formattedData: FormattedDataPoint[];
   columns: string[];
   hoveredDate: Date | null;
   onHover: (date: Date | null) => void;
+  columnStyles?: ColumnStyles;
 }
 
 const renderCellValue = (val: string | Date | LinkData) => {
@@ -26,7 +27,7 @@ const renderCellValue = (val: string | Date | LinkData) => {
   return String(val);
 };
 
-export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, hoveredDate, onHover }) => {
+export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, hoveredDate, onHover, columnStyles = {} }) => {
   const tableRef = useRef<HTMLTableElement>(null);
 
   return (
@@ -46,7 +47,7 @@ export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, ho
                     borderBottom: '1px solid #555' 
                   }}
                 >
-                  {formatColumnName(col)}
+                  {formatColumnName(col, columnStyles[col])}
                 </th>
               );
             })}

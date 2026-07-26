@@ -21,6 +21,47 @@ You can also upload a CSV file using the button in the upper right corner.
 3. Build the assets: `npm run build path/to/your/file.csv > index.html`
 4. Open `index.html` in a web browser
 
+The CSV can also be piped in on stdin, and the y scale can be pinned with
+`--y-max` / `--y-min` (note the `--` that stops npm from eating the flags):
+
+```bash
+npm run build -- --y-max 100 --y-min 0 path/to/your/file.csv > index.html
+cat path/to/your/file.csv | npm run build -- --y-max 100 > index.html
+```
+
+In the app the same settings are available as `yMax` / `yMin` query parameters.
+
+## Styling columns
+
+A column header can carry a style spec in curly braces. Commas inside the braces
+do not split the CSV field, so all three of these are equivalent:
+
+```csv
+date,col1{type: decimal, places: 2},col2
+date,col1{type:'decimal'\, places: 2},col2
+date,"col1{type: decimal, places: 2}",col2
+```
+
+| Key | Values | Effect |
+| --- | --- | --- |
+| `type` | `percent`, `decimal`, `integer`, `currency` | How numbers are formatted, instead of guessing from the data range |
+| `places` | integer 0-20 | Decimal places (`decimals` also works) |
+| `currency` | ISO code, e.g. `eur` | Currency for `type: currency`, defaults to `USD` |
+| `color` | any CSS color | Line and legend color, instead of the generated one |
+| `label` | any text | Header text, instead of the prettified column name |
+| `plot` | `false` | Keep the column in the tables but leave it off the plot |
+
+For example:
+
+```csv
+date,ratio{type: percent, places: 2},revenue{type: currency, color: #ff7f0e},id{plot: false, label: 'Trade ID'}
+2026-01-01,0.7,1234.5,A-1
+```
+
+Unrecognized keys and values are ignored, so a typo in a spec cannot break the
+plot. Column names are matched after the spec is stripped, so `col1{...}` is
+still the column `col1` everywhere else.
+
 ## Developing
 
 Do whatever is in `.github/workflows/ci.yml`, but roughly:

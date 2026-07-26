@@ -18,20 +18,202 @@ export interface FormattedDataPoint {
 
 export type NumberFormatter = (val: number) => string;
 
+export type ColumnFormatType = 'percent' | 'decimal' | 'integer' | 'currency';
+
+export interface ColumnStyle {
+  type?: ColumnFormatType;
+  places?: number;
+  currency?: string;
+  color?: string;
+  label?: string;
+  plot?: boolean;
+}
+
+export type ColumnStyles = Record<string, ColumnStyle>;
+
+const FORMAT_TYPES: Record<string, ColumnFormatType> = {
+  percent: 'percent',
+  percentage: 'percent',
+  pct: 'percent',
+  decimal: 'decimal',
+  number: 'decimal',
+  float: 'decimal',
+  integer: 'integer',
+  int: 'integer',
+  currency: 'currency',
+  money: 'currency',
+};
+
 export function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-export function formatColumnName(name: string): string {
+/** True when a column is a candidate for plotting, i.e. not the date and not opted out. */
+export function isSeriesColumn(name: string, columnStyles: ColumnStyles = {}): boolean {
+  return name.toLowerCase() !== 'date' && columnStyles[name]?.plot !== false;
+}
+
+export function formatColumnName(name: string, style?: ColumnStyle): string {
+  if (style?.label) return style.label;
   if (!name) return name;
   const withSpaces = name.replace(/_/g, ' ');
   return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
 }
 
-export function parseCSV(csvString: string): { data: DataPoint[], columns: string[] } {
-  const rawData = d3.csvParse(csvString);
+/**
+ * Splits a CSV header line into fields. Beyond standard double-quoting, commas
+ * inside a `{...}` style spec do not separate fields, and a comma there can also
+ * be escaped with a backslash.
+ */
+export function splitHeaderLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let quoted = false;
+  let depth = 0;
 
-  if (rawData.length === 0) return { data: [], columns: [] };
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (quoted) {
+      if (char !== '"') {
+        current += char;
+      } else if (line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        quoted = false;
+      }
+      continue;
+    }
+
+    if (char === '"' && current === '') {
+      quoted = true;
+    } else if (char === '\\' && depth > 0 && i + 1 < line.length) {
+      i++;
+      current += line[i];
+    } else if (char === ',' && depth === 0) {
+      fields.push(current);
+      current = '';
+    } else {
+      if (char === '{') depth++;
+      else if (char === '}' && depth > 0) depth--;
+      current += char;
+    }
+  }
+
+  fields.push(current);
+  return fields;
+}
+
+/** Splits a style spec body on commas, ignoring commas inside quoted values. */
+function splitSpecEntries(spec: string): string[] {
+  const entries: string[] = [];
+  let current = '';
+  let quote: string | null = null;
+
+  for (const char of spec) {
+    if (quote) {
+      if (char === quote) quote = null;
+      else current += char;
+    } else if (char === '"' || char === "'") {
+      quote = char;
+    } else if (char === ',') {
+      entries.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  entries.push(current);
+  return entries;
+}
+
+/**
+ * Parses the body of a column style spec, e.g. `type: decimal, places: 2`.
+ * Unrecognized keys and values are ignored so a typo cannot break the plot.
+ */
+export function parseColumnStyle(spec: string): ColumnStyle {
+  const style: ColumnStyle = {};
+
+  splitSpecEntries(spec).forEach(entry => {
+    const separator = entry.indexOf(':');
+    if (separator === -1) return;
+
+    const key = entry.slice(0, separator).trim().toLowerCase();
+    const value = entry.slice(separator + 1).trim();
+    if (!value) return;
+
+    switch (key) {
+      case 'type': {
+        const type = FORMAT_TYPES[value.toLowerCase()];
+        if (type) style.type = type;
+        break;
+      }
+      case 'places':
+      case 'decimals': {
+        const places = Number(value);
+        if (Number.isInteger(places) && places >= 0 && places <= 20) style.places = places;
+        break;
+      }
+      case 'currency':
+        // Intl throws on anything that is not a 3-letter code.
+        if (/^[a-zA-Z]{3}$/.test(value)) style.currency = value.toUpperCase();
+        break;
+      case 'color':
+        style.color = value;
+        break;
+      case 'label':
+        style.label = value;
+        break;
+      case 'plot':
+        style.plot = value.toLowerCase() !== 'false';
+        break;
+    }
+  });
+
+  return style;
+}
+
+/** Splits a header field into its column name and its optional `{...}` style spec. */
+export function parseColumnHeader(header: string): { name: string, style: ColumnStyle } {
+  const match = header.match(/^([^{]*)\{(.*)\}\s*$/s);
+  if (!match) return { name: header, style: {} };
+  return { name: match[1].trim(), style: parseColumnStyle(match[2]) };
+}
+
+function escapeCSVField(field: string): string {
+  return /["\n,]/.test(field) ? `"${field.replace(/"/g, '""')}"` : field;
+}
+
+/**
+ * Pulls style specs off the header line, returning the CSV with plain column
+ * names so it can be handed to a standard CSV parser.
+ */
+export function extractColumnStyles(csvString: string): { csv: string, columnStyles: ColumnStyles } {
+  const newline = csvString.indexOf('\n');
+  const header = newline === -1 ? csvString : csvString.slice(0, newline);
+
+  if (!header.includes('{')) return { csv: csvString, columnStyles: {} };
+
+  const carriageReturn = header.endsWith('\r');
+  const rest = newline === -1 ? '' : csvString.slice(newline);
+  const columnStyles: ColumnStyles = {};
+
+  const names = splitHeaderLine(carriageReturn ? header.slice(0, -1) : header).map(field => {
+    const { name, style } = parseColumnHeader(field);
+    if (Object.keys(style).length > 0) columnStyles[name] = style;
+    return escapeCSVField(name);
+  });
+
+  return { csv: names.join(',') + (carriageReturn ? '\r' : '') + rest, columnStyles };
+}
+
+export function parseCSV(csvString: string): { data: DataPoint[], columns: string[], columnStyles: ColumnStyles } {
+  const { csv, columnStyles } = extractColumnStyles(csvString);
+  const rawData = d3.csvParse(csv);
+
+  if (rawData.length === 0) return { data: [], columns: [], columnStyles };
 
   const columns = rawData.columns;
 
@@ -54,14 +236,46 @@ export function parseCSV(csvString: string): { data: DataPoint[], columns: strin
     return point;
   }).filter((d): d is DataPoint => d !== null);
 
-  return { data, columns };
+  return { data, columns, columnStyles };
 }
 
-export function analyzeColumnFormatters(data: DataPoint[], columns: string[]): Record<string, NumberFormatter> {
+/** Builds a formatter from an explicit column style, or null if it says nothing about numbers. */
+function styledFormatter(style: ColumnStyle | undefined): NumberFormatter | null {
+  if (!style || (!style.type && style.places == null)) return null;
+
+  switch (style.type) {
+    case 'percent': {
+      const places = style.places ?? 1;
+      return (val: number) => val.toLocaleString(undefined, { style: 'percent', minimumFractionDigits: places, maximumFractionDigits: places });
+    }
+    case 'currency': {
+      const places = style.places ?? 2;
+      return (val: number) => val.toLocaleString(undefined, { style: 'currency', currency: style.currency ?? 'USD', minimumFractionDigits: places, maximumFractionDigits: places });
+    }
+    case 'integer':
+      return (val: number) => val.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    default: {
+      const places = style.places ?? 2;
+      return (val: number) => val.toLocaleString(undefined, { minimumFractionDigits: places, maximumFractionDigits: places });
+    }
+  }
+}
+
+export function analyzeColumnFormatters(
+  data: DataPoint[],
+  columns: string[],
+  columnStyles: ColumnStyles = {}
+): Record<string, NumberFormatter> {
   const formatters: Record<string, NumberFormatter> = {};
 
   columns.forEach(col => {
     if (col.toLowerCase() === 'date') return;
+
+    const styled = styledFormatter(columnStyles[col]);
+    if (styled) {
+      formatters[col] = styled;
+      return;
+    }
 
     let min = Infinity;
     let max = -Infinity;
@@ -110,14 +324,19 @@ export function spreadDuplicateDates(data: DataPoint[]): DataPoint[] {
   });
 }
 
-export function processCSV(csvString: string): { data: DataPoint[], formattedData: FormattedDataPoint[], columns: string[] } {
-  const { data, columns } = parseCSV(csvString);
-  
+export function processCSV(csvString: string): {
+  data: DataPoint[],
+  formattedData: FormattedDataPoint[],
+  columns: string[],
+  columnStyles: ColumnStyles,
+} {
+  const { data, columns, columnStyles } = parseCSV(csvString);
+
   if (data.length === 0) {
-    return { data: [], formattedData: [], columns: [] };
+    return { data: [], formattedData: [], columns: [], columnStyles };
   }
 
-  const formatters = analyzeColumnFormatters(data, columns);
+  const formatters = analyzeColumnFormatters(data, columns, columnStyles);
 
   const formattedData = data.map(row => {
     const formatted: FormattedDataPoint = {
@@ -158,5 +377,5 @@ export function processCSV(csvString: string): { data: DataPoint[], formattedDat
     return formatted;
   });
 
-  return { data, formattedData, columns };
+  return { data, formattedData, columns, columnStyles };
 }
