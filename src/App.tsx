@@ -1,14 +1,16 @@
 import { useEffect, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import { processCSV, spreadDuplicateDates, DataPoint, FormattedDataPoint } from './dataProcessing';
+import { processCSV, spreadDuplicateDates, ColumnStyles, DataPoint, FormattedDataPoint } from './dataProcessing';
 import { TimeSeriesChart } from './components/TimeSeriesChart';
 import { HoverDetails } from './components/HoverDetails';
 import { DataTable } from './components/DataTable';
 import { getCSVData } from './data';
+import { ChartOptions, getChartOptions } from './chartOptions';
 
 declare global {
   interface Window {
     __INITIAL_CSV__?: string;
+    __CHART_OPTIONS__?: ChartOptions;
   }
 }
 
@@ -16,8 +18,11 @@ function App() {
   const [data, setData] = useState<DataPoint[]>([]);
   const [formattedData, setFormattedData] = useState<FormattedDataPoint[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
+  const [columnStyles, setColumnStyles] = useState<ColumnStyles>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const chartOptions = useMemo(() => getChartOptions(window), []);
 
   // Interaction State
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
@@ -39,6 +44,7 @@ function App() {
         setData(result.data);
         setFormattedData(result.formattedData);
         setColumns(result.columns);
+        setColumnStyles(result.columnStyles);
 
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -69,10 +75,12 @@ function App() {
     const colors: Record<string, string> = {};
     const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
     columns.forEach(col => {
-      colors[col] = colorScale(col);
+      // Always advance the scale so styling one column does not recolor the rest.
+      const generated = colorScale(col);
+      colors[col] = columnStyles[col]?.color ?? generated;
     });
     return colors;
-  }, [columns]);
+  }, [columns, columnStyles]);
 
   // Handlers
   const handleSelectSeries = (series: string) => {
@@ -97,6 +105,7 @@ function App() {
       setData(result.data);
       setFormattedData(result.formattedData);
       setColumns(result.columns);
+      setColumnStyles(result.columnStyles);
       setIsolatedSeries(null);
       setHoveredDate(null);
 
@@ -130,6 +139,8 @@ function App() {
           onToggleSpreadDates={() => setSpreadDates(!spreadDates)}
           columnColors={columnColors}
           onFileUpload={handleFileUpload}
+          columnStyles={columnStyles}
+          chartOptions={chartOptions}
         />
         <HoverDetails
           formattedData={displayFormattedData}
@@ -138,6 +149,7 @@ function App() {
           columnColors={columnColors}
           isolatedSeries={isolatedSeries}
           onSelectSeries={handleSelectSeries}
+          columnStyles={columnStyles}
         />
       </div>
       <DataTable
@@ -145,6 +157,7 @@ function App() {
         columns={columns}
         hoveredDate={hoveredDate}
         onHover={setHoveredDate}
+        columnStyles={columnStyles}
       />
     </div>
   );

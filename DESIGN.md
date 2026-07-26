@@ -105,6 +105,37 @@ date,value
 - `date`: ISO 8601 string or standard date format.
 - `value`: Numerical value.
 
+### Column Styles
+
+Anything that is a property of a single column travels with the data, embedded in
+its header inside curly braces:
+
+```csv
+date,ratio{type: percent, places: 2},revenue{type: currency},id{plot: false}
+2026-01-01,0.7,1234.5,A-1
+```
+
+Because a spec can contain commas, the header line is split by
+`splitHeaderLine` rather than the CSV parser: commas inside braces (or escaped
+with a backslash) do not separate fields, and standard double-quoting also
+works. The specs are then stripped off, so the rest of the app only ever sees
+plain column names plus a `ColumnStyles` map.
+
+Supported keys are `type`, `places`, `currency`, `color`, `label` and `plot`.
+Unrecognized keys and values are dropped, since a CSV header is user data and a
+typo should not break the plot.
+
+### Chart Settings
+
+Settings that describe the chart rather than a column — currently the y scale
+bounds — are not part of the data, so they come from outside it:
+
+- CLI: `--y-max` / `--y-min`, injected into the report as `window.__CHART_OPTIONS__`.
+- App: `yMax` / `yMin` query parameters, which take precedence over injected values.
+
+An explicit bound wins over the data-derived domain, and the series are clipped
+to the plot area so a bound crops the lines instead of drawing over the axes.
+
 ## Usage
 
 ### Prerequisites

@@ -34,6 +34,24 @@ test('DataTable renders correctly', async (t) => {
   await assertSnapshot(t, rendered, { testFilePath, extension: '.html' });
 });
 
+test('DataTable renders correctly with styled columns', async (t) => {
+  const csv = `date,ratio{type: percent\\, places: 2},revenue{type: currency, label: 'Net revenue'}
+2023-01-01,0.15,45.5
+2023-01-02,-0.8,-99.25`;
+  const { formattedData, columns, columnStyles } = processCSV(csv);
+  const element = React.createElement(DataTable, {
+    formattedData,
+    columns,
+    hoveredDate: null,
+    onHover: () => { },
+    columnStyles,
+  });
+  const html = renderToStaticMarkup(element);
+  const rendered = await format(html, { parser: 'html' });
+
+  await assertSnapshot(t, rendered, { testFilePath, extension: '.html' });
+});
+
 test('DataTable renders correctly when date column is not the first column', async (t) => {
   const csv = `val1,date,val2\n10,2023-01-01,20`;
   const { formattedData, columns } = processCSV(csv);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FormattedDataPoint, formatColumnName, LinkData } from '../dataProcessing';
+import { ColumnStyles, FormattedDataPoint, formatColumnName, isSeriesColumn, LinkData } from '../dataProcessing';
 
 interface HoverDetailsProps {
   formattedData: FormattedDataPoint[];
@@ -8,6 +8,7 @@ interface HoverDetailsProps {
   columnColors: Record<string, string>;
   isolatedSeries: string | null;
   onSelectSeries: (series: string) => void;
+  columnStyles?: ColumnStyles;
 }
 
 const renderCellValue = (val: string | Date | LinkData | undefined) => {
@@ -35,6 +36,7 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
   columnColors,
   isolatedSeries,
   onSelectSeries,
+  columnStyles = {},
 }) => {
   const currentData = hoveredDate 
     ? formattedData.find(d => d.date.getTime() === hoveredDate.getTime()) 
@@ -53,20 +55,21 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
           <tr>
             {columns.map(col => {
               const isDate = col.toLowerCase() === 'date';
+              const isSeries = isSeriesColumn(col, columnStyles);
               return (
-                <th 
-                  key={col} 
-                  style={{ 
-                    padding: '8px', 
+                <th
+                  key={col}
+                  style={{
+                    padding: '8px',
                     textAlign: isDate ? 'left' : undefined,
-                    cursor: isDate ? undefined : 'pointer',
-                    opacity: !isDate && isolatedSeries && isolatedSeries !== col ? 0.5 : 1,
-                    textDecoration: !isDate && isolatedSeries === col ? 'underline' : 'none',
+                    cursor: isSeries ? 'pointer' : undefined,
+                    opacity: isSeries && isolatedSeries && isolatedSeries !== col ? 0.5 : 1,
+                    textDecoration: isSeries && isolatedSeries === col ? 'underline' : 'none',
                     borderBottom: '1px solid #555'
                   }}
-                  onClick={() => !isDate && onSelectSeries(col)}
+                  onClick={() => isSeries && onSelectSeries(col)}
                 >
-                  {formatColumnName(col)}
+                  {formatColumnName(col, columnStyles[col])}
                 </th>
               );
             })}
@@ -76,13 +79,13 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
           {/* Row of Colors */}
           <tr>
             {columns.map(col => {
-              const isDate = col.toLowerCase() === 'date';
+              const isSeries = isSeriesColumn(col, columnStyles);
               return (
-                <td 
-                  key={col} 
+                <td
+                  key={col}
                   style={{ padding: '4px 8px' }}
                 >
-                  {!isDate && (
+                  {isSeries && (
                     <div style={{ 
                       width: '100%', 
                       height: '6px', 
@@ -98,15 +101,16 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
           <tr>
             {columns.map(col => {
               const isDate = col.toLowerCase() === 'date';
+              const isSeries = isSeriesColumn(col, columnStyles);
               const cellValue = isDate ? currentData?.formattedDate : currentData?.[col];
               return (
-                <td 
-                  key={col} 
-                  style={{ 
-                    padding: '8px', 
+                <td
+                  key={col}
+                  style={{
+                    padding: '8px',
                     textAlign: isDate ? 'left' : undefined,
                     fontWeight: 'bold',
-                    opacity: !isDate && isolatedSeries && isolatedSeries !== col ? 0.5 : 1
+                    opacity: isSeries && isolatedSeries && isolatedSeries !== col ? 0.5 : 1
                   }}
                 >
                   {renderCellValue(cellValue as string | LinkData | undefined)}

@@ -3,11 +3,19 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
+import { CLIError, USAGE, parseArgs } from './cliOptions.ts';
+
 const dirName = path.dirname(fileURLToPath(import.meta.url));
 
 async function buildAndGenerate(): Promise<void> {
-  const args = process.argv.slice(2);
-  const csvPath = args[0] != null? args[0] : 0;
+  const { csvPath: csvPathArg, chartOptions, help } = parseArgs(process.argv.slice(2));
+
+  if (help) {
+    console.error(USAGE);
+    return;
+  }
+
+  const csvPath = csvPathArg != null ? csvPathArg : 0;
 
   if (csvPath) {
     if (!fs.existsSync(csvPath)) {
@@ -47,8 +55,9 @@ async function buildAndGenerate(): Promise<void> {
   // Inject
   let html = template;
 
-  // 2. Inject CSV
-  const injection = `<script>window.__INITIAL_CSV__ = ${JSON.stringify(csvContent)};</script>`;
+  // 2. Inject CSV and chart settings
+  const injection = `<script>window.__INITIAL_CSV__ = ${JSON.stringify(csvContent)};`
+    + `window.__CHART_OPTIONS__ = ${JSON.stringify(chartOptions)};</script>`;
 
   // 3. Inject CSS
   const style = `<style>${cssCode}</style>`;
@@ -66,6 +75,10 @@ async function buildAndGenerate(): Promise<void> {
 }
 
 buildAndGenerate().catch((err: unknown) => {
-  console.error(err);
+  if (err instanceof CLIError) {
+    console.error(`Error: ${err.message}\n\n${USAGE}`);
+  } else {
+    console.error(err);
+  }
   process.exit(1);
 });

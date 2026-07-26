@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import { DataPoint } from '../dataProcessing';
+import { ColumnStyles, DataPoint, isSeriesColumn } from '../dataProcessing';
+import { ChartOptions } from '../chartOptions';
+
+const CLIP_ID = 'plot-area-clip';
 
 interface TimeSeriesChartProps {
   data: DataPoint[];
@@ -14,6 +17,8 @@ interface TimeSeriesChartProps {
   onToggleSpreadDates: () => void;
   columnColors: Record<string, string>;
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  columnStyles?: ColumnStyles;
+  chartOptions?: ChartOptions;
 }
 
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
@@ -28,6 +33,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   onToggleSpreadDates,
   columnColors,
   onFileUpload,
+  columnStyles = {},
+  chartOptions = {},
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -36,9 +43,9 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
   const plottableColumns = useMemo(() => {
     return columns.filter(col => {
-      return data.some(row => typeof row[col] === 'number');
+      return isSeriesColumn(col, columnStyles) && data.some(row => typeof row[col] === 'number');
     });
-  }, [columns, data]);
+  }, [columns, data, columnStyles]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -77,7 +84,10 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       g.append('g').attr('class', 'grid-h').style('opacity', 0.2);
       g.append('g').attr('class', 'axis-x').attr('transform', `translate(0,${innerHeight})`);
       g.append('g').attr('class', 'axis-y');
-      g.append('g').attr('class', 'lines-group');
+      // Clip the lines so an explicit y-min/y-max crops the series instead of
+      // letting them draw over the axes.
+      svg.append('defs').append('clipPath').attr('id', CLIP_ID).append('rect');
+      g.append('g').attr('class', 'lines-group').attr('clip-path', `url(#${CLIP_ID})`);
       g.append('line').attr('class', 'cursor-rule')
         .attr('stroke', 'white').attr('stroke-width', 1).attr('stroke-dasharray', '4 4').style('opacity', 0);
       g.append('rect').attr('class', 'hover-overlay')
@@ -90,6 +100,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     // Update axes positions if dimensions changed
     g.select<SVGGElement>('.axis-x').attr('transform', `translate(0,${innerHeight})`);
     g.select<SVGGElement>('.hover-overlay').attr('width', innerWidth).attr('height', innerHeight);
+    svg.select(`#${CLIP_ID} rect`)
+      .attr('x', 0).attr('y', 0).attr('width', innerWidth).attr('height', innerHeight);
 
     // 2. Scales
     const x = d3.scaleTime()
@@ -109,6 +121,10 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     if (yMin > 0) {
       yMin = 0;
     }
+
+    // Explicit chart settings win over the data-derived domain.
+    if (chartOptions.yMax != null) yMax = chartOptions.yMax;
+    if (chartOptions.yMin != null) yMin = chartOptions.yMin;
 
     const y = d3.scaleLinear()
       .domain([yMin, yMax])
@@ -197,7 +213,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       rule.style('opacity', 0);
     }
 
-  }, [data, columns, plottableColumns, isolatedSeries, columnColors, hoveredDate, onHover, dimensions]);
+  }, [data, columns, plottableColumns, isolatedSeries, columnColors, hoveredDate, onHover, dimensions, chartOptions]);
 
   return (
     <div style={{

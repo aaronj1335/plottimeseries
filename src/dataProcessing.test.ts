@@ -3,9 +3,15 @@ import assert from 'node:assert';
 import {
   parseCSV,
   analyzeColumnFormatters,
+  extractColumnStyles,
   formatColumnName,
+  isSeriesColumn,
+  parseColumnHeader,
+  parseColumnStyle,
   processCSV,
   spreadDuplicateDates,
+  splitHeaderLine,
+  ColumnStyles,
   DataPoint,
   LinkData,
 } from './dataProcessing.ts';
@@ -114,6 +120,35 @@ test('analyzeColumnFormatters', async (t) => {
     assert.strictEqual(fmt(10.1), '10');
     assert.strictEqual(fmt(-15.9), '-16');
   });
+
+  await t.test('column styles override the inferred format', () => {
+    const columns = ['a', 'b', 'c', 'd', 'e'];
+    const data: DataPoint[] = [{ date: new Date(), a: 0.7, b: 0.7, c: 0.7, d: 0.7, e: 0.7 }];
+    const columnStyles: ColumnStyles = {
+      a: { type: 'decimal', places: 2 },
+      b: { type: 'integer' },
+      c: { type: 'percent', places: 0 },
+      d: { type: 'currency', currency: 'USD' },
+      e: { places: 4 },
+    };
+
+    const formatters = analyzeColumnFormatters(data, columns, columnStyles);
+
+    // Without a style, [-2, 2] would have been formatted as a percentage.
+    assert.strictEqual(formatters['a'](0.7), '0.70');
+    assert.strictEqual(formatters['b'](0.7), '1');
+    assert.strictEqual(formatters['c'](0.7), '70%');
+    assert.strictEqual(formatters['d'](0.7), '$0.70');
+    assert.strictEqual(formatters['e'](0.7), '0.7000');
+  });
+
+  await t.test('falls back to inference for styles that say nothing about numbers', () => {
+    const columns = ['pct'];
+    const data: DataPoint[] = [{ date: new Date(), pct: 0.5 }];
+    const formatters = analyzeColumnFormatters(data, columns, { pct: { color: 'red' } });
+
+    assert.strictEqual(formatters['pct'](0.123), '12.3%');
+  });
 });
 
 test('formatColumnName', () => {
@@ -123,6 +158,148 @@ test('formatColumnName', () => {
   assert.strictEqual(formatColumnName('simple'), 'Simple');
   assert.strictEqual(formatColumnName('multiple_underscores_here'), 'Multiple underscores here');
   assert.strictEqual(formatColumnName(''), '');
+  assert.strictEqual(formatColumnName('total_assets', { label: 'AUM' }), 'AUM');
+  assert.strictEqual(formatColumnName('total_assets', { type: 'percent' }), 'Total assets');
+});
+
+test('isSeriesColumn', () => {
+  assert.strictEqual(isSeriesColumn('val1'), true);
+  assert.strictEqual(isSeriesColumn('date'), false);
+  assert.strictEqual(isSeriesColumn('Date'), false);
+  assert.strictEqual(isSeriesColumn('val1', { val1: { plot: false } }), false);
+  assert.strictEqual(isSeriesColumn('val1', { val1: { plot: true } }), true);
+  assert.strictEqual(isSeriesColumn('val1', { val1: { color: 'red' } }), true);
+});
+
+test('splitHeaderLine', async (t) => {
+  await t.test('splits a plain header line', () => {
+    assert.deepStrictEqual(splitHeaderLine('date,val1,val2'), ['date', 'val1', 'val2']);
+  });
+
+  await t.test('keeps commas inside a style spec', () => {
+    assert.deepStrictEqual(
+      splitHeaderLine('date,col1{type: decimal, places: 2},col2'),
+      ['date', 'col1{type: decimal, places: 2}', 'col2']
+    );
+  });
+
+  await t.test('honors backslash-escaped commas inside a style spec', () => {
+    assert.deepStrictEqual(
+      splitHeaderLine("date,col1{type:'decimal'\\, places: 2},col2"),
+      ['date', "col1{type:'decimal', places: 2}", 'col2']
+    );
+  });
+
+  await t.test('honors standard CSV quoting', () => {
+    assert.deepStrictEqual(
+      splitHeaderLine('date,"col1{type: decimal, places: 2}",col2'),
+      ['date', 'col1{type: decimal, places: 2}', 'col2']
+    );
+  });
+
+  await t.test('unescapes doubled quotes in a quoted field', () => {
+    assert.deepStrictEqual(splitHeaderLine('date,"a ""b"" c"'), ['date', 'a "b" c']);
+  });
+
+  await t.test('leaves a backslash outside a spec alone', () => {
+    assert.deepStrictEqual(splitHeaderLine('date,a\\b'), ['date', 'a\\b']);
+  });
+});
+
+test('parseColumnStyle', async (t) => {
+  await t.test('parses each supported key', () => {
+    assert.deepStrictEqual(
+      parseColumnStyle("type: 'currency', places: 3, currency: eur, color: #ff0000, label: 'Net, total', plot: false"),
+      {
+        type: 'currency',
+        places: 3,
+        currency: 'EUR',
+        color: '#ff0000',
+        label: 'Net, total',
+        plot: false,
+      }
+    );
+  });
+
+  await t.test('accepts type aliases', () => {
+    assert.deepStrictEqual(parseColumnStyle('type: pct'), { type: 'percent' });
+    assert.deepStrictEqual(parseColumnStyle('type: INT'), { type: 'integer' });
+    assert.deepStrictEqual(parseColumnStyle('type: number'), { type: 'decimal' });
+    assert.deepStrictEqual(parseColumnStyle('decimals: 4'), { places: 4 });
+  });
+
+  await t.test('ignores unknown keys and invalid values', () => {
+    assert.deepStrictEqual(parseColumnStyle('bogus: 1, type: nonsense, places: -1, places: abc'), {});
+  });
+
+  await t.test('ignores a currency that is not a 3-letter code', () => {
+    assert.deepStrictEqual(parseColumnStyle('type: currency, currency: usdollar'), { type: 'currency' });
+    // The default currency still formats rather than throwing.
+    const formatters = analyzeColumnFormatters(
+      [{ date: new Date(), val: 1 }],
+      ['val'],
+      { val: parseColumnStyle('type: currency, currency: usdollar') }
+    );
+    assert.strictEqual(formatters['val'](1), '$1.00');
+  });
+
+  await t.test('ignores entries without a value', () => {
+    assert.deepStrictEqual(parseColumnStyle('type, places:'), {});
+  });
+
+  await t.test('treats plot as true unless explicitly false', () => {
+    assert.deepStrictEqual(parseColumnStyle('plot: true'), { plot: true });
+    assert.deepStrictEqual(parseColumnStyle('plot: FALSE'), { plot: false });
+  });
+});
+
+test('parseColumnHeader', async (t) => {
+  await t.test('returns the header unchanged when there is no spec', () => {
+    assert.deepStrictEqual(parseColumnHeader(' val1 '), { name: ' val1 ', style: {} });
+  });
+
+  await t.test('separates the name from the spec', () => {
+    assert.deepStrictEqual(parseColumnHeader('col1 {type: decimal, places: 2}'), {
+      name: 'col1',
+      style: { type: 'decimal', places: 2 },
+    });
+  });
+
+  await t.test('treats an empty spec as no styling', () => {
+    assert.deepStrictEqual(parseColumnHeader('col1{}'), { name: 'col1', style: {} });
+  });
+});
+
+test('extractColumnStyles', async (t) => {
+  await t.test('leaves a CSV without specs untouched', () => {
+    const csv = 'date,val1\n2023-01-01,10';
+    assert.deepStrictEqual(extractColumnStyles(csv), { csv, columnStyles: {} });
+  });
+
+  await t.test('strips specs from the header line', () => {
+    const { csv, columnStyles } = extractColumnStyles(
+      "date,col1{type:'decimal'\\, places: 2},col2\n2026-01-01,0.7,foo"
+    );
+    assert.strictEqual(csv, 'date,col1,col2\n2026-01-01,0.7,foo');
+    assert.deepStrictEqual(columnStyles, { col1: { type: 'decimal', places: 2 } });
+  });
+
+  await t.test('preserves CRLF line endings', () => {
+    const { csv } = extractColumnStyles('date,col1{places: 2}\r\n2026-01-01,0.7\r\n');
+    assert.strictEqual(csv, 'date,col1\r\n2026-01-01,0.7\r\n');
+  });
+
+  await t.test('re-quotes a column name that needs it', () => {
+    const { csv, columnStyles } = extractColumnStyles('date,"a,b"{places: 2}\n2026-01-01,0.7');
+    assert.strictEqual(csv, 'date,"a,b"\n2026-01-01,0.7');
+    assert.deepStrictEqual(columnStyles, { 'a,b': { places: 2 } });
+  });
+
+  await t.test('handles a header-only CSV', () => {
+    const { csv, columnStyles } = extractColumnStyles('date,col1{places: 2}');
+    assert.strictEqual(csv, 'date,col1');
+    assert.deepStrictEqual(columnStyles, { col1: { places: 2 } });
+  });
 });
 
 test('spreadDuplicateDates', async (t) => {
@@ -223,5 +400,21 @@ test('processCSV', async (t) => {
     const { formattedData, columns } = processCSV('');
     assert.strictEqual(formattedData.length, 0);
     assert.strictEqual(columns.length, 0);
+  });
+
+  await t.test('applies styles from the column headers', () => {
+    const csv = `date,col1{type:'decimal'\\, places: 2},col2{label: Category},col3{plot: false}
+2026-01-01,0.7,foo,3`;
+
+    const { formattedData, columns, columnStyles } = processCSV(csv);
+
+    assert.deepStrictEqual(columns, ['date', 'col1', 'col2', 'col3']);
+    assert.deepStrictEqual(columnStyles, {
+      col1: { type: 'decimal', places: 2 },
+      col2: { label: 'Category' },
+      col3: { plot: false },
+    });
+    assert.strictEqual(formattedData[0].col1, '0.70');
+    assert.strictEqual(formattedData[0].col2, 'foo');
   });
 });
