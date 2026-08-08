@@ -1,6 +1,7 @@
 import type { ChartOptions } from '../src/chartOptions.ts';
 
-export const USAGE = `Usage: npm run build -- [options] [file.csv] > report.html
+export function usage(programName: string): string {
+  return `Usage: ${programName} [options] [file.csv] > report.html
 
 Reads the CSV from stdin when no file is given.
 
@@ -8,6 +9,7 @@ Options:
   --y-max <number>  Pin the top of the y scale
   --y-min <number>  Pin the bottom of the y scale
   -h, --help        Show this message`;
+}
 
 export interface CLIOptions {
   csvPath: string | null;

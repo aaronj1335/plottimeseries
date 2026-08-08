@@ -16,10 +16,37 @@ You can also upload a CSV file using the button in the upper right corner.
 
 ### CLI
 
+Every commit on `main` publishes prebuilt artifacts to the
+[`latest` release](https://github.com/aaronj1335/plottimeseries/releases/tag/latest).
+Neither of them needs npm, a checkout, or a build:
+
+- `plottimeseries.cjs`, a single JavaScript file that runs on any stable Node.js:
+
+  ```bash
+  node plottimeseries.cjs path/to/your/file.csv > index.html
+  ```
+
+- `plottimeseries-<platform>.tar.gz`, a standalone executable that does not need
+  Node.js at all:
+
+  ```bash
+  tar -xzf plottimeseries-linux-x64.tar.gz
+  ./plottimeseries path/to/your/file.csv > index.html
+  ```
+
+Then open `index.html` in a web browser.
+
+From a checkout the same thing is `npm run build`:
+
 1. Clone this repository
 2. Install dependencies: `npm install`
 3. Build the assets: `npm run build path/to/your/file.csv > index.html`
 4. Open `index.html` in a web browser
+
+`npm run build:standalone` builds both artifacts locally into `dist/`. The
+executable is built for the platform you run it on, using the Node.js
+[single executable application](https://nodejs.org/api/single-executable-applications.html)
+support, so it embeds whichever Node.js ran the build.
 
 The CSV can also be piped in on stdin, and the y scale can be pinned with
 `--y-max` / `--y-min` (note the `--` that stops npm from eating the flags):
@@ -27,6 +54,12 @@ The CSV can also be piped in on stdin, and the y scale can be pinned with
 ```bash
 npm run build -- --y-max 100 --y-min 0 path/to/your/file.csv > index.html
 cat path/to/your/file.csv | npm run build -- --y-max 100 > index.html
+```
+
+The prebuilt artifacts take the same arguments, without the `--`:
+
+```bash
+cat path/to/your/file.csv | ./plottimeseries --y-max 100 > index.html
 ```
 
 In the app the same settings are available as `yMax` / `yMin` query parameters.
@@ -76,6 +109,7 @@ To validate changes:
 2. `npm run typecheck`
 3. `npm run test`
 4. `mkdir -p pages-public && npm run build public/data.csv > pages-public/index.html`
+5. `npm run build:standalone && ./dist/plottimeseries public/data.csv > /dev/null`
 
 ## Background
 
