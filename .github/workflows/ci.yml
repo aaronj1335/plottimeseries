@@ -40,11 +40,17 @@ jobs:
         include:
         - os: ubuntu-latest
           target: linux-x64
+          suffix: ''
         - os: macos-latest
           target: macos-arm64
+          suffix: ''
         - os: windows-latest
           target: windows-x64
+          suffix: '.exe'
     runs-on: ${{ matrix.os }}
+    env:
+      EXE: plottimeseries${{ matrix.suffix }}
+      COMPILED: plottimeseries-compiled${{ matrix.suffix }}
     steps:
     - uses: actions/checkout@v4
     - name: Use Node.js 24.x
@@ -58,14 +64,23 @@ jobs:
       shell: bash
       run: |
         node dist/plottimeseries.cjs public/data.csv > /dev/null
-        ./dist/plottimeseries${{ matrix.os == 'windows-latest' && '.exe' || '' }} public/data.csv > /dev/null
-        cat public/data.csv | ./dist/plottimeseries${{ matrix.os == 'windows-latest' && '.exe' || '' }} > /dev/null
+        "./dist/$EXE" public/data.csv > /dev/null
+        cat public/data.csv | "./dist/$EXE" > /dev/null
+        if [ -f "dist/$COMPILED" ]; then
+          "./dist/$COMPILED" public/data.csv > /dev/null
+          cat public/data.csv | "./dist/$COMPILED" --y-max 100 > /dev/null
+        else
+          echo "::warning::scriptc produced no compiled binary on ${{ matrix.target }}"
+        fi
     - name: Package the standalone build
       shell: bash
       run: |
         mkdir -p release
-        tar -czf "release/plottimeseries-${{ matrix.target }}.tar.gz" -C dist \
-          "plottimeseries${{ matrix.os == 'windows-latest' && '.exe' || '' }}"
+        files="$EXE"
+        if [ -f "dist/$COMPILED" ]; then
+          files="$files $COMPILED"
+        fi
+        tar -czf "release/plottimeseries-${{ matrix.target }}.tar.gz" -C dist $files
     - name: Upload the standalone executable
       uses: actions/upload-artifact@v4
       with:
@@ -104,7 +119,7 @@ jobs:
 
         \`plottimeseries.cjs\` runs on any stable Node.js: \`node plottimeseries.cjs data.csv > report.html\`.
 
-        The per-platform archives hold an executable that needs nothing installed at all."
+        The per-platform archives hold executables that need nothing installed at all: \`plottimeseries\`, which embeds Node.js, and \`plottimeseries-compiled\`, the same program compiled to native code by scriptc."
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
