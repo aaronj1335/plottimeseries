@@ -125,7 +125,7 @@ function App() {
         position: isSticky ? 'sticky' : 'static',
         top: 0,
         zIndex: 100,
-        backgroundColor: '#242424' // Ensure opacity
+        backgroundColor: '#000000' // Ensure opacity
       }}>
         <TimeSeriesChart
           data={displayData}
