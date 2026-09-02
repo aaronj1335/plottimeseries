@@ -18,11 +18,11 @@ const GRID_DIVISIONS = 5;
 
 const GRID_COLOR = '#cfe0f0';
 
-/**
- * Everything animates at this duration. Short enough that the line still reads
- * as one stroke of a marker rather than a slide show.
- */
-const TRANSITION_MS = 1200;
+/** Rescaling and isolating a series, as clicking a header does. */
+const UPDATE_MS = 750;
+
+/** The marker stroke that draws each series in when it first appears. */
+const DRAW_MS = 1500;
 
 interface TimeSeriesChartProps {
   data: DataPoint[];
@@ -166,7 +166,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
     // 3. Transitions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const t = svg.transition().duration(TRANSITION_MS).ease(d3.easeCubicOut) as unknown as d3.Transition<any, any, any, any>;
+    const t = svg.transition().duration(UPDATE_MS) as unknown as d3.Transition<any, any, any, any>;
 
     // Major grid lines, on the same tick values the axes label.
     const yTicks = y.ticks(MAJOR_TICKS);
@@ -249,7 +249,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           .attr('stroke-dasharray', `${length} ${length}`)
           .attr('stroke-dashoffset', length)
           .transition('draw')
-          .duration(TRANSITION_MS)
+          .duration(DRAW_MS)
           .ease(d3.easeCubicOut)
           .attr('stroke-dashoffset', 0)
           .on('end', clearDash)
