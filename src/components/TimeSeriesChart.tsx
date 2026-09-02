@@ -22,7 +22,7 @@ const GRID_COLOR = '#cfe0f0';
  * Everything animates at this duration. Short enough that the line still reads
  * as one stroke of a marker rather than a slide show.
  */
-const TRANSITION_MS = 900;
+const TRANSITION_MS = 1200;
 
 interface TimeSeriesChartProps {
   data: DataPoint[];

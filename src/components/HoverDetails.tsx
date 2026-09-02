@@ -9,6 +9,11 @@ interface HoverDetailsProps {
   isolatedSeries: string | null;
   onSelectSeries: (series: string) => void;
   columnStyles?: ColumnStyles;
+  /**
+   * Reports the pinned column widths, so the data table below can adopt the
+   * same layout and read as the body under this header.
+   */
+  onColumnWidths?: (widths: number[] | null) => void;
 }
 
 // useLayoutEffect warns when rendered on the server (the CLI report is rendered
@@ -57,6 +62,7 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
   isolatedSeries,
   onSelectSeries,
   columnStyles = {},
+  onColumnWidths,
 }) => {
   const currentData = hoveredDate
     ? formattedData.find(d => d.date.getTime() === hoveredDate.getTime())
@@ -109,6 +115,10 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
     if (widths.length !== columns.length) return;
     setMeasurement({ key: measureKey, containerWidth: container.clientWidth, widths });
   }, [columnWidths, measureKey, columns.length]);
+
+  useEffect(() => {
+    onColumnWidths?.(columnWidths);
+  }, [columnWidths, onColumnWidths]);
 
   // Pinned widths are only valid for the width they were measured at, so drop
   // them when the container resizes and let the effect above measure again.
