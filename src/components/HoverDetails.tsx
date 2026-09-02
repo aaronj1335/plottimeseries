@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ColumnStyles, FormattedDataPoint, formatColumnName, isSeriesColumn, LinkData } from '../dataProcessing';
+import { apportionColumnWidths } from '../columnWidths';
 
 interface HoverDetailsProps {
   formattedData: FormattedDataPoint[];
@@ -111,7 +112,9 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
     const container = containerRef.current;
     const headerRow = headerRowRef.current;
     if (!container || !headerRow) return;
-    const widths = Array.from(headerRow.cells, cell => Math.ceil(cell.getBoundingClientRect().width));
+    const widths = apportionColumnWidths(
+      Array.from(headerRow.cells, cell => cell.getBoundingClientRect().width)
+    );
     if (widths.length !== columns.length) return;
     setMeasurement({ key: measureKey, containerWidth: container.clientWidth, widths });
   }, [columnWidths, measureKey, columns.length]);
