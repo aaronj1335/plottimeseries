@@ -51,7 +51,7 @@ body {
 /* The hover row is a readout, not a heading: keep its labels quiet. */
 .hover-details th {
   font-weight: 400;
-  text-transform: none;
+  text-transform: uppercase;
 }
 
 table.data-table {
