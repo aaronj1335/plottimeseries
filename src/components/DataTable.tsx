@@ -12,13 +12,11 @@ interface DataTableProps {
 const renderCellValue = (val: string | Date | LinkData) => {
   if (val && typeof val === 'object' && 'linkText' in val && 'url' in val) {
     return (
-      <a 
-        href={val.url.toString()} 
-        target="_blank" 
+      <a
+        href={val.url.toString()}
+        target="_blank"
         rel="noopener noreferrer"
-        style={{ color: '#4da6ff', textDecoration: 'none' }}
-        onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+        className="cell-link"
       >
         {val.linkText}
       </a>
@@ -32,21 +30,12 @@ export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, ho
 
   return (
       <table ref={tableRef} className="data-table">
-        <thead style={{ position: 'sticky', top: 0, background: '#1a1a1a', zIndex: 10 }}>
+        <thead>
           <tr>
             {columns.map(col => {
               const isDate = col.toLowerCase() === 'date';
               return (
-                <th 
-                  key={col} 
-                  style={{ 
-                    position: isDate ? 'sticky' : undefined,
-                    top: isDate ? 0 : undefined,
-                    padding: '12px', 
-                    textAlign: isDate ? 'left' : undefined,
-                    borderBottom: '1px solid #555' 
-                  }}
-                >
+                <th key={col} className={isDate ? 'col--date' : undefined}>
                   {formatColumnName(col, columnStyles[col])}
                 </th>
               );
@@ -56,23 +45,21 @@ export const DataTable: React.FC<DataTableProps> = ({ formattedData, columns, ho
         <tbody>
           {formattedData.map((row, i) => {
              const isHighlighted = hoveredDate && row.date.getTime() === hoveredDate.getTime();
+             const classes = [
+               i % 2 === 1 ? 'row--odd' : '',
+               isHighlighted ? 'row--active' : '',
+             ].filter(Boolean).join(' ');
              return (
                <tr
                  key={i}
-                 style={{ backgroundColor: isHighlighted ? '#444' : (i % 2 === 0 ? '#2a2a2a' : '#242424') }}
+                 className={classes || undefined}
                  onMouseEnter={() => onHover(row.date)}
                >
                  {columns.map(col => {
                    const isDate = col.toLowerCase() === 'date';
                    const cellValue = isDate ? row.formattedDate : row[col];
                    return (
-                     <td 
-                       key={col} 
-                       style={{ 
-                         padding: '8px',
-                         textAlign: isDate ? 'left' : undefined
-                       }}
-                     >
+                     <td key={col} className={isDate ? 'cell--date' : undefined}>
                       {renderCellValue(cellValue as string | LinkData)}
                     </td>
                    );

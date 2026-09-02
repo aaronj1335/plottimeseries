@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import { processCSV, spreadDuplicateDates, ColumnStyles, DataPoint, FormattedDataPoint } from './dataProcessing';
+import { processCSV, spreadDuplicateDates, ColumnStyles, DataPoint, FormattedDataPoint, isSeriesColumn } from './dataProcessing';
 import { TimeSeriesChart } from './components/TimeSeriesChart';
 import { HoverDetails } from './components/HoverDetails';
 import { DataTable } from './components/DataTable';
 import { getCSVData } from './data';
 import { ChartOptions, getChartOptions } from './chartOptions';
+import { SERIES_PALETTE } from './palette';
 
 declare global {
   interface Window {
@@ -70,17 +71,27 @@ function App() {
     return formattedData.map((fd, i) => ({ ...fd, date: displayData[i].date }));
   }, [formattedData, displayData, spreadDates]);
 
+  // The columns that actually become lines: everything that isn't the date,
+  // isn't opted out with `plot: false`, and holds at least one number. Text
+  // columns like a category or a link ride along in the tables but have no
+  // series, so they get neither a colour nor a swatch.
+  const plottedColumns = useMemo(() => {
+    return columns.filter(col =>
+      isSeriesColumn(col, columnStyles) && displayData.some(row => typeof row[col] === 'number')
+    );
+  }, [columns, columnStyles, displayData]);
+
   // Generate Colors
   const columnColors = useMemo(() => {
     const colors: Record<string, string> = {};
-    const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
-    columns.forEach(col => {
+    const colorScale = d3.scaleOrdinal(SERIES_PALETTE);
+    plottedColumns.forEach(col => {
       // Always advance the scale so styling one column does not recolor the rest.
       const generated = colorScale(col);
       colors[col] = columnStyles[col]?.color ?? generated;
     });
     return colors;
-  }, [columns, columnStyles]);
+  }, [plottedColumns, columnStyles]);
 
   // Handlers
   const handleSelectSeries = (series: string) => {
@@ -116,20 +127,15 @@ function App() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
+  if (loading) return <div className="status-message status-message--loading">Loading</div>;
+  if (error) return <div className="status-message status-message--error">Error: {error}</div>;
 
   return (
-    <div className="App">
-      <div style={{
-        position: isSticky ? 'sticky' : 'static',
-        top: 0,
-        zIndex: 100,
-        backgroundColor: '#242424' // Ensure opacity
-      }}>
+    <div className="App app-shell">
+      <div className={`chart-dock${isSticky ? ' chart-dock--sticky' : ''}`}>
         <TimeSeriesChart
           data={displayData}
-          columns={columns}
+          plottedColumns={plottedColumns}
           hoveredDate={hoveredDate}
           onHover={setHoveredDate}
           isolatedSeries={isolatedSeries}
@@ -139,7 +145,6 @@ function App() {
           onToggleSpreadDates={() => setSpreadDates(!spreadDates)}
           columnColors={columnColors}
           onFileUpload={handleFileUpload}
-          columnStyles={columnStyles}
           chartOptions={chartOptions}
         />
         <HoverDetails

@@ -1,67 +1,24 @@
-<div
-  style="
-    padding: 1rem;
-    background: #333;
-    border-bottom: 1px solid #444;
-    overflow-x: auto;
-    color: #ffffff;
-  "
->
-  <table class="data-table" style="font-size: 0.9rem">
+<div class="hover-details">
+  <table class="data-table">
     <thead>
       <tr>
-        <th
-          style="
-            padding: 8px;
-            text-align: left;
-            opacity: 1;
-            text-decoration: none;
-            border-bottom: 1px solid #555;
-          "
-        >
-          Date
-        </th>
-        <th
-          style="
-            padding: 8px;
-            cursor: pointer;
-            opacity: 1;
-            text-decoration: none;
-            border-bottom: 1px solid #555;
-          "
-        >
-          Pct change
-        </th>
-        <th
-          style="
-            padding: 8px;
-            opacity: 1;
-            text-decoration: none;
-            border-bottom: 1px solid #555;
-          "
-        >
-          Amount (not plotted)
-        </th>
+        <th class="col-header col--date">Date</th>
+        <th class="col-header col-header--series">Pct change</th>
+        <th class="col-header">Amount (not plotted)</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td style="padding: 4px 8px"></td>
-        <td style="padding: 4px 8px">
-          <div
-            style="width: 100%; height: 6px; background-color: red; opacity: 1"
-          ></div>
+        <td class="swatch-cell"></td>
+        <td class="swatch-cell">
+          <div class="swatch" style="background-color: red"></div>
         </td>
-        <td style="padding: 4px 8px"></td>
+        <td class="swatch-cell"></td>
       </tr>
       <tr>
-        <td
-          style="padding: 8px; text-align: left; font-weight: bold; opacity: 1"
-        >
-          2023-01-01
-        </td>
-        <td style="padding: 8px; font-weight: bold; opacity: 1">15.0%</td>
-        <td style="padding: 8px; font-weight: bold; opacity: 1">46</td>
+        <td class="value-cell value-cell--date col--date">2023-01-01</td>
+        <td class="value-cell">15.0%</td>
+        <td class="value-cell">46</td>
       </tr>
     </tbody>
   </table>

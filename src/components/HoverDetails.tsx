@@ -11,22 +11,37 @@ interface HoverDetailsProps {
   columnStyles?: ColumnStyles;
 }
 
+/** Shown in place of a value before the pointer has been anywhere. */
+const EMPTY = '—';
+
+/**
+ * Whether a column has a line in the chart above, and so is worth a swatch and
+ * a click target. A colour is only handed out to columns that are plotted, so
+ * its presence is the test -- a text column like a category or a link is listed
+ * in the table but has nothing to isolate.
+ */
+function hasSeries(
+  col: string,
+  columnColors: Record<string, string>,
+  columnStyles: ColumnStyles
+): boolean {
+  return isSeriesColumn(col, columnStyles) && columnColors[col] != null;
+}
+
 const renderCellValue = (val: string | Date | LinkData | undefined) => {
   if (val && typeof val === 'object' && 'linkText' in val && 'url' in val) {
     return (
-      <a 
-        href={val.url.toString()} 
-        target="_blank" 
+      <a
+        href={val.url.toString()}
+        target="_blank"
         rel="noopener noreferrer"
-        style={{ color: '#4da6ff', textDecoration: 'none' }}
-        onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+        className="cell-link"
       >
         {val.linkText}
       </a>
     );
   }
-  return String(val ?? '-');
+  return val == null || val === '' ? EMPTY : String(val);
 };
 
 export const HoverDetails: React.FC<HoverDetailsProps> = ({
@@ -38,35 +53,30 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
   onSelectSeries,
   columnStyles = {},
 }) => {
-  const currentData = hoveredDate 
-    ? formattedData.find(d => d.date.getTime() === hoveredDate.getTime()) 
+  const currentData = hoveredDate
+    ? formattedData.find(d => d.date.getTime() === hoveredDate.getTime())
     : null;
 
   return (
-    <div style={{ 
-      padding: '1rem', 
-      background: '#333', 
-      borderBottom: '1px solid #444', 
-      overflowX: 'auto',
-      color: '#ffffff'
-    }}>
-      <table className="data-table" style={{ fontSize: '0.9rem' }}>
+    <div className="hover-details">
+      <table className="data-table">
         <thead>
           <tr>
             {columns.map(col => {
               const isDate = col.toLowerCase() === 'date';
-              const isSeries = isSeriesColumn(col, columnStyles);
+              const isSeries = hasSeries(col, columnColors, columnStyles);
+              const muted = isSeries && isolatedSeries != null && isolatedSeries !== col;
+              const classes = [
+                'col-header',
+                isDate ? 'col--date' : '',
+                isSeries ? 'col-header--series' : '',
+                muted ? 'col-header--muted' : '',
+                isolatedSeries === col ? 'col-header--isolated' : '',
+              ].filter(Boolean).join(' ');
               return (
                 <th
                   key={col}
-                  style={{
-                    padding: '8px',
-                    textAlign: isDate ? 'left' : undefined,
-                    cursor: isSeries ? 'pointer' : undefined,
-                    opacity: isSeries && isolatedSeries && isolatedSeries !== col ? 0.5 : 1,
-                    textDecoration: isSeries && isolatedSeries === col ? 'underline' : 'none',
-                    borderBottom: '1px solid #555'
-                  }}
+                  className={classes}
                   onClick={() => isSeries && onSelectSeries(col)}
                 >
                   {formatColumnName(col, columnStyles[col])}
@@ -76,43 +86,44 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
           </tr>
         </thead>
         <tbody>
-          {/* Row of Colors */}
+          {/* Colour key. Doubles as the isolate control alongside the header. */}
           <tr>
             {columns.map(col => {
-              const isSeries = isSeriesColumn(col, columnStyles);
+              const isSeries = hasSeries(col, columnColors, columnStyles);
+              const muted = isolatedSeries != null && isolatedSeries !== col;
+              const isolated = isolatedSeries === col;
               return (
-                <td
-                  key={col}
-                  style={{ padding: '4px 8px' }}
-                >
+                <td key={col} className="swatch-cell">
                   {isSeries && (
-                    <div style={{ 
-                      width: '100%', 
-                      height: '6px', 
-                      backgroundColor: columnColors[col], 
-                      opacity: isolatedSeries && isolatedSeries !== col ? 0.3 : 1
-                    }}></div>
+                    <div
+                      className={`swatch${muted ? ' swatch--muted' : ''}${isolated ? ' swatch--isolated' : ''}`}
+                      style={{
+                        backgroundColor: columnColors[col],
+                        // The isolated series glows in its own colour, matching
+                        // the bloom on its line in the plot above.
+                        boxShadow: isolated ? `0 0 10px -1px ${columnColors[col]}` : undefined,
+                      }}
+                    ></div>
                   )}
                 </td>
               );
             })}
           </tr>
-          {/* Row of Values */}
+          {/* Values at the cursor. */}
           <tr>
             {columns.map(col => {
               const isDate = col.toLowerCase() === 'date';
-              const isSeries = isSeriesColumn(col, columnStyles);
+              const isSeries = hasSeries(col, columnColors, columnStyles);
               const cellValue = isDate ? currentData?.formattedDate : currentData?.[col];
+              const muted = isSeries && isolatedSeries != null && isolatedSeries !== col;
+              const classes = [
+                'value-cell',
+                isDate ? 'value-cell--date col--date' : '',
+                muted ? 'value-cell--muted' : '',
+                cellValue == null ? 'value-cell--empty' : '',
+              ].filter(Boolean).join(' ');
               return (
-                <td
-                  key={col}
-                  style={{
-                    padding: '8px',
-                    textAlign: isDate ? 'left' : undefined,
-                    fontWeight: 'bold',
-                    opacity: isSeries && isolatedSeries && isolatedSeries !== col ? 0.5 : 1
-                  }}
-                >
+                <td key={col} className={classes}>
                   {renderCellValue(cellValue as string | LinkData | undefined)}
                 </td>
               );

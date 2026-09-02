@@ -1,56 +1,528 @@
+/*
+ * plottimeseries -- visual system.
+ *
+ * The report is a single self-contained file served under a hash-based CSP
+ * (see scripts/securityHeaders.ts), so everything here has to be reachable
+ * without a network request: no webfonts, no background images, no icon sets.
+ * The whole look is therefore built out of system fonts, gradients and
+ * hairlines -- which suits it, because the thing we want to communicate is
+ * measurement, not decoration.
+ *
+ * Two rules hold throughout:
+ *   1. Numbers are monospaced and tabular, so digits line up column to column
+ *      and a value changing under the cursor never reflows its neighbours.
+ *   2. Borders are hairlines. Structure comes from a change in surface tone,
+ *      not from a heavy rule.
+ */
+
 :root {
-  font-family: Helvetica, sans-serif;
+  /* Surfaces, darkest to lightest. */
+  --bg-void: #06070a;
+  --bg-base: #0a0c11;
+  --bg-panel: #0d1016;
+  --bg-raised: #12161f;
+  --bg-hover: #171d29;
+
+  /* Hairlines. Slate-tinted rather than pure white, so they read as edges
+     rather than as glare. */
+  --line-hair: rgba(148, 163, 184, 0.09);
+  --line-soft: rgba(148, 163, 184, 0.16);
+  --line-strong: rgba(148, 163, 184, 0.3);
+
+  /* Type. */
+  --text-hi: #e9eef8;
+  --text-mid: #97a3b8;
+  --text-lo: #5e6b80;
+
+  --accent: #22d3ee;
+  --accent-soft: rgba(34, 211, 238, 0.14);
+  --accent-line: rgba(34, 211, 238, 0.45);
+
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* One spacing scale, so padding never has to be guessed at. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+
+  --radius: 6px;
+
+  font-family: var(--font-ui);
+  font-size: 14px;
   line-height: 1.5;
   font-weight: 400;
   color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--text-hi);
+  background-color: var(--bg-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 html {
-  background-color: #242424;
+  background-color: var(--bg-base);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  color: #ffffff;
+  color: var(--text-hi);
+  background-color: var(--bg-base);
 }
 
-/* Ensure app container is full width */
+/*
+ * Page ground: engineering paper. A 32px grid at ~2% white, two very wide
+ * colour washes to keep the black from going flat, and a vignette so the grid
+ * fades out towards the edges instead of stopping at them. Fixed and behind
+ * everything, so scrolling the table doesn't drag it along.
+ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(900px 600px at 12% -10%, rgba(34, 211, 238, 0.06), transparent 70%),
+    radial-gradient(800px 500px at 92% 8%, rgba(129, 140, 248, 0.05), transparent 70%),
+    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+  -webkit-mask-image: radial-gradient(140% 100% at 50% 0%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(140% 100% at 50% 0%, #000 35%, transparent 100%);
+}
+
 #root {
   width: 100%;
 }
 
-/* Scrollbar styling for table */
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-hi);
+}
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #2a2a2a;
+  background: var(--bg-void);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #555;
+  background: #29303d;
+  border: 3px solid var(--bg-void);
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #888;
+  background: #3b4757;
 }
+
+::-webkit-scrollbar-corner {
+  background: var(--bg-void);
+}
+
+/* ---------------------------------------------------------------- shell -- */
+
+.app-shell {
+  width: 100%;
+}
+
+.chart-dock {
+  top: 0;
+  z-index: 100;
+  background: linear-gradient(180deg, var(--bg-panel), var(--bg-base));
+}
+
+.chart-dock--sticky {
+  position: sticky;
+  /* The dock is translucent where the chart's own gradients don't cover it, so
+     blur whatever scrolls under it rather than letting rows show through. */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 18px 40px -24px #000;
+}
+
+.status-message {
+  padding: var(--sp-5);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+}
+
+.status-message--error {
+  color: #fb7185;
+}
+
+/* Three dots counting up while the CSV parses -- the only moving thing on an
+   otherwise empty screen, which is the point. */
+.status-message--loading::after {
+  content: '';
+  animation: ellipsis 1.2s steps(4, end) infinite;
+}
+
+@keyframes ellipsis {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+/* -------------------------------------------------------------- toolbar -- */
+
+.chart-panel {
+  position: relative;
+  z-index: 90;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--text-hi);
+}
+
+.chart-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--line-hair);
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  white-space: nowrap;
+}
+
+.brand-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 var(--accent-line);
+  animation: pulse 2.4s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.5); }
+  70% { box-shadow: 0 0 0 7px rgba(34, 211, 238, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+}
+
+/* The instrument readout: row count, series count, date span. Monospaced and
+   pipe-separated so it stays one fixed-width strip as the numbers change. */
+.readout {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-lo);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.readout-item {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.readout-key {
+  color: #3f4a5c;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.readout-value {
+  color: var(--text-mid);
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+  min-width: var(--sp-2);
+}
+
+.toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* Toggles: the native checkbox is replaced by a square that fills with the
+   accent and gets a drawn check, so the two controls match the rest of the
+   hairline vocabulary instead of importing the OS widget's chrome. */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 5px var(--sp-3) 5px var(--sp-2);
+  border: 1px solid var(--line-hair);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.015);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.toggle:hover {
+  border-color: var(--line-soft);
+  color: var(--text-hi);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.toggle--on {
+  border-color: rgba(34, 211, 238, 0.28);
+  color: var(--text-hi);
+  background: rgba(34, 211, 238, 0.06);
+}
+
+.toggle input {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--bg-void);
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.toggle input::before {
+  content: '';
+  width: 7px;
+  height: 4px;
+  border: 1.5px solid var(--bg-void);
+  border-top: 0;
+  border-right: 0;
+  transform: translateY(-1px) rotate(-45deg) scale(0.4);
+  opacity: 0;
+  transition: transform 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.4), opacity 0.12s ease;
+}
+
+.toggle input:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle input:checked::before {
+  transform: translateY(-1px) rotate(-45deg) scale(1);
+  opacity: 1;
+}
+
+.upload-button {
+  position: relative;
+  background: rgba(34, 211, 238, 0.08);
+  color: var(--accent);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  padding: 6px var(--sp-3);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.2s ease, transform 0.08s ease;
+}
+
+.upload-button:hover {
+  background: rgba(34, 211, 238, 0.16);
+  box-shadow: 0 0 18px -4px rgba(34, 211, 238, 0.55);
+}
+
+.upload-button:active {
+  transform: translateY(1px);
+}
+
+/* ---------------------------------------------------------------- chart -- */
 
 .chart-container {
   height: 500px;
-  max-height: 40vh;
+  max-height: 42vh;
   width: 100%;
+  position: relative;
 }
+
+.chart-svg {
+  display: block;
+  cursor: crosshair;
+}
+
+/* d3 renders the axes; the styling lives here so the drawing code stays about
+   scales and geometry. */
+.chart-svg .axis text {
+  fill: var(--text-lo);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.chart-svg .axis .tick line {
+  stroke: var(--line-soft);
+}
+
+.chart-svg .axis .domain {
+  stroke: var(--line-hair);
+}
+
+.chart-svg .grid-h line {
+  stroke: rgba(148, 163, 184, 0.13);
+  stroke-dasharray: 1 3;
+}
+
+.chart-svg .zero-rule {
+  stroke: rgba(148, 163, 184, 0.34);
+}
+
+.chart-svg .cursor-rule {
+  stroke: var(--accent-line);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.chart-svg .cursor-label {
+  fill: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.chart-svg .cursor-label-bg {
+  fill: var(--bg-void);
+  stroke: rgba(34, 211, 238, 0.3);
+}
+
+.chart-svg .frame-corner {
+  stroke: rgba(148, 163, 184, 0.35);
+  stroke-width: 1;
+  fill: none;
+}
+
+.chart-svg .focus-dot {
+  stroke: var(--bg-void);
+  stroke-width: 1.5;
+}
+
+.chart-svg .focus-halo {
+  fill: none;
+  stroke-width: 1;
+}
+
+/* -------------------------------------------------------- hover details -- */
+
+.hover-details {
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0));
+  border-bottom: 1px solid var(--line-soft);
+  overflow-x: auto;
+  color: var(--text-hi);
+}
+
+.hover-details .col-header {
+  padding: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  border-bottom: 1px solid var(--line-hair);
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.hover-details .col-header--series {
+  cursor: pointer;
+}
+
+.hover-details .col-header--series:hover {
+  color: var(--text-hi);
+}
+
+.hover-details .col-header--muted {
+  opacity: 0.45;
+}
+
+.hover-details .col-header--isolated {
+  color: var(--text-hi);
+}
+
+/* Swatch row. The bar carries the series colour and, when that series is
+   isolated, a matching glow -- the same cue the line in the chart gets. */
+.hover-details .swatch-cell {
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.hover-details .swatch {
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  transition: opacity 0.2s ease, box-shadow 0.2s ease, height 0.2s ease;
+}
+
+.hover-details .swatch--muted {
+  opacity: 0.28;
+}
+
+.hover-details .swatch--isolated {
+  height: 4px;
+}
+
+.hover-details .value-cell {
+  padding: 6px var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--text-hi);
+  transition: opacity 0.15s ease;
+}
+
+.hover-details .value-cell--muted {
+  opacity: 0.4;
+}
+
+.hover-details .value-cell--empty {
+  color: var(--text-lo);
+}
+
+.hover-details .value-cell--date {
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+/* ----------------------------------------------------------- data table -- */
 
 table.data-table {
   border-collapse: collapse;
   text-align: right;
   width: 100%;
+  font-variant-numeric: tabular-nums;
 }
 
 table.data-table td {
@@ -59,22 +531,97 @@ table.data-table td {
   text-overflow: ellipsis;
 }
 
-.upload-button {
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+.table-scroll {
+  width: 100%;
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: var(--sp-3) var(--sp-3);
+  /* A header that wraps to two lines shifts every row below it; let the table
+     scroll sideways instead. */
+  white-space: nowrap;
+  background: rgba(10, 12, 17, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: var(--font-mono);
+  font-size: 10px;
   font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  border-bottom: 1px solid var(--line-soft);
 }
 
-.upload-button:hover {
-  background-color: #2563eb;
+.data-table tbody td {
+  padding: 7px var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-hi);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.05);
 }
 
-.upload-button:active {
-  transform: translateY(1px);
+.data-table .cell--date {
+  text-align: left;
+  color: var(--text-mid);
+  letter-spacing: 0.03em;
+}
+
+.data-table .col--date {
+  text-align: left;
+}
+
+.data-table tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.data-table tbody tr.row--odd {
+  background: rgba(255, 255, 255, 0.014);
+}
+
+.data-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+/*
+ * The row under the cursor. The accent bar is drawn with a box-shadow inset on
+ * the first cell so it costs no layout -- the row does not shift by a pixel as
+ * the highlight moves down the table.
+ */
+.data-table tbody tr.row--active {
+  background: var(--bg-hover);
+}
+
+.data-table tbody tr.row--active td:first-child {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.data-table tbody tr.row--active td {
+  color: #fff;
+}
+
+.cell-link {
+  color: #67e8f9;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(103, 232, 249, 0.25);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.cell-link:hover {
+  color: #a5f3fc;
+  border-bottom-color: #a5f3fc;
+}
+
+/* --------------------------------------------------------------- motion -- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
