@@ -123,7 +123,7 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
   }, []);
 
   return (
-    <div ref={containerRef} style={{
+    <div ref={containerRef} className="hover-details" style={{
       padding: '1rem',
       background: '#111111',
       borderBottom: '1px solid #333',

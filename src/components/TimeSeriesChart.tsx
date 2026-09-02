@@ -2,21 +2,27 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { ColumnStyles, DataPoint, isSeriesColumn } from '../dataProcessing';
 import { ChartOptions } from '../chartOptions';
+import { subdivideGridPositions } from '../gridLines';
 
 const CLIP_ID = 'plot-area-clip';
 const GRADIENT_ID = 'plot-area-gradient';
-const FINE_GRID_ID = 'plot-area-grid-fine';
-const COARSE_GRID_ID = 'plot-area-grid-coarse';
-
-/** Engineering-paper grid spacing, in pixels. */
-const FINE_GRID_SIZE = 10;
-const COARSE_GRID_SIZE = 50;
 
 /**
- * Everything animates at this duration. Short enough that the line reads as a
- * quick stroke of a marker rather than a slide show.
+ * Target number of major grid lines per axis. The axes label the very same
+ * ticks, which is what keeps labels, major lines and fine lines on one grid.
  */
-const TRANSITION_MS = 500;
+const MAJOR_TICKS = 10;
+
+/** Fine grid lines per major interval, engineering-paper style. */
+const GRID_DIVISIONS = 5;
+
+const GRID_COLOR = '#cfe0f0';
+
+/**
+ * Everything animates at this duration. Short enough that the line still reads
+ * as one stroke of a marker rather than a slide show.
+ */
+const TRANSITION_MS = 700;
 
 interface TimeSeriesChartProps {
   data: DataPoint[];
@@ -103,27 +109,9 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       gradient.append('stop').attr('offset', '55%').attr('stop-color', '#0b0d11');
       gradient.append('stop').attr('offset', '100%').attr('stop-color', '#000000');
 
-      // Two nested square grids give the backdrop its engineering-paper feel.
-      [
-        { id: FINE_GRID_ID, size: FINE_GRID_SIZE, opacity: 0.055 },
-        { id: COARSE_GRID_ID, size: COARSE_GRID_SIZE, opacity: 0.1 },
-      ].forEach(({ id, size, opacity }) => {
-        defs.append('pattern')
-          .attr('id', id)
-          .attr('patternUnits', 'userSpaceOnUse')
-          .attr('width', size).attr('height', size)
-          .append('path')
-          .attr('d', `M ${size} 0 L 0 0 L 0 ${size}`)
-          .attr('fill', 'none')
-          .attr('stroke', '#9fb8d0')
-          .attr('stroke-width', 1)
-          .attr('stroke-opacity', opacity);
-      });
-
       // Order matters for layering
       g.append('rect').attr('class', 'plot-background').attr('fill', `url(#${GRADIENT_ID})`);
-      g.append('rect').attr('class', 'grid-paper-fine').attr('fill', `url(#${FINE_GRID_ID})`);
-      g.append('rect').attr('class', 'grid-paper-coarse').attr('fill', `url(#${COARSE_GRID_ID})`);
+      g.append('g').attr('class', 'grid-minor').style('opacity', 0.07);
       g.append('g').attr('class', 'grid-v').style('opacity', 0.16);
       g.append('g').attr('class', 'grid-h').style('opacity', 0.16);
       g.append('g').attr('class', 'axis-x').attr('transform', `translate(0,${innerHeight})`);
@@ -144,7 +132,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     // Update axes positions if dimensions changed
     g.select<SVGGElement>('.axis-x').attr('transform', `translate(0,${innerHeight})`);
     g.select<SVGGElement>('.hover-overlay').attr('width', innerWidth).attr('height', innerHeight);
-    g.selectAll('.plot-background, .grid-paper-fine, .grid-paper-coarse')
+    g.select('.plot-background')
       .attr('x', 0).attr('y', 0).attr('width', innerWidth).attr('height', innerHeight);
     svg.select(`#${CLIP_ID} rect`)
       .attr('x', 0).attr('y', 0).attr('width', innerWidth).attr('height', innerHeight);
@@ -180,23 +168,43 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const t = svg.transition().duration(TRANSITION_MS).ease(d3.easeCubicOut) as unknown as d3.Transition<any, any, any, any>;
 
-    // Grid lines on the tick values, sitting on top of the graph paper.
+    // Major grid lines, on the same tick values the axes label.
+    const yTicks = y.ticks(MAJOR_TICKS);
+    const xTicks = x.ticks(MAJOR_TICKS);
+
     g.select<SVGGElement>('.grid-h')
       .transition(t)
-      .call(d3.axisLeft(y).ticks(12).tickSize(-innerWidth).tickFormat(() => ''))
+      .call(d3.axisLeft(y).tickValues(yTicks).tickSize(-innerWidth).tickFormat(() => ''))
       .call(g => g.select('.domain').remove())
-      .selectAll('line').attr('stroke', '#cfe0f0');
+      .selectAll('line').attr('stroke', GRID_COLOR);
 
     g.select<SVGGElement>('.grid-v')
       .attr('transform', `translate(0,${innerHeight})`)
       .transition(t)
-      .call(d3.axisBottom(x).ticks(12).tickSize(-innerHeight).tickFormat(() => ''))
+      .call(d3.axisBottom(x).tickValues(xTicks).tickSize(-innerHeight).tickFormat(() => ''))
       .call(g => g.select('.domain').remove())
-      .selectAll('line').attr('stroke', '#cfe0f0');
+      .selectAll('line').attr('stroke', GRID_COLOR);
+
+    // Fine grid, subdividing the major intervals exactly so the two line up.
+    const minorLines = [
+      ...subdivideGridPositions(yTicks.map(y), GRID_DIVISIONS, [0, innerHeight])
+        .map(pos => ({ x1: 0, x2: innerWidth, y1: pos, y2: pos })),
+      ...subdivideGridPositions(xTicks.map(x), GRID_DIVISIONS, [0, innerWidth])
+        .map(pos => ({ x1: pos, x2: pos, y1: 0, y2: innerHeight })),
+    ];
+
+    g.select('.grid-minor')
+      .selectAll<SVGLineElement, typeof minorLines[number]>('line')
+      .data(minorLines)
+      .join('line')
+      .attr('stroke', GRID_COLOR)
+      .attr('shape-rendering', 'crispEdges')
+      .attr('x1', d => d.x1).attr('x2', d => d.x2)
+      .attr('y1', d => d.y1).attr('y2', d => d.y2);
 
     // Axes
-    g.select<SVGGElement>('.axis-x').call(d3.axisBottom(x)); // X usually static unless data changes time range
-    g.select<SVGGElement>('.axis-y').transition(t).call(d3.axisLeft(y));
+    g.select<SVGGElement>('.axis-x').call(d3.axisBottom(x).tickValues(xTicks)); // X usually static unless data changes time range
+    g.select<SVGGElement>('.axis-y').transition(t).call(d3.axisLeft(y).tickValues(yTicks));
 
     // 4. Lines
     const lineGenerator = d3.line<DataPoint>().x(d => x(d.date));
