@@ -8,10 +8,6 @@ interface DataTableProps {
   columns: string[];
   hoveredDate: Date | null;
   onHover: (date: Date | null) => void;
-  /**
-   * Column widths measured by the hover details, which labels these columns and
-   * so has to line up with them. Without them the table lays itself out.
-   */
   columnWidths?: number[] | null;
 }
 
@@ -24,8 +20,6 @@ export const DataTable: React.FC<DataTableProps> = ({
 }) => {
   const tableRef = useRef<HTMLTableElement>(null);
 
-  // The hover details row is this table's header, so the two only read as one
-  // table while they share a column layout.
   const pinnedWidths = columnWidths?.length === columns.length ? columnWidths : null;
 
   return (

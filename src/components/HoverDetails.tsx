@@ -18,21 +18,13 @@ interface HoverDetailsProps {
   isolatedSeries: string | null;
   onSelectSeries: (series: string) => void;
   columnStyles?: ColumnStyles;
-  /**
-   * Reports the pinned column widths, so the data table below can adopt the
-   * same layout and read as the body under this header.
-   */
   onColumnWidths?: (widths: number[] | null) => void;
 }
 
-// useLayoutEffect warns when rendered on the server (the CLI report is rendered
-// with renderToStaticMarkup), so fall back to useEffect there.
 const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 interface Measurement {
-  /** Identifies the content the widths were measured for. */
   key: string;
-  /** Width of the containing element when the measurement was taken. */
   containerWidth: number;
   widths: number[];
 }
@@ -55,11 +47,6 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
   const headerRowRef = useRef<HTMLTableRowElement>(null);
   const [measurement, setMeasurement] = useState<Measurement | null>(null);
 
-  // The value row only ever shows the hovered row, so laying the table out from
-  // the visible content makes every column resize as the pointer moves. Instead
-  // pick, per column, the longest value in the whole data set (character count
-  // is a good enough proxy for width, and the candidate itself is measured for
-  // real below) and size the columns from that once.
   const widestValues = useMemo(() => {
     const widest: Record<string, string> = {};
     for (const col of columns) widest[col] = EMPTY_VALUE;
@@ -78,7 +65,6 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
     [columns, columnStyles],
   );
 
-  // Anything that changes the widest content invalidates the measurement.
   const measureKey = useMemo(
     () => JSON.stringify(columns.map((col, i) => [headerLabels[i], widestValues[col]])),
     [columns, headerLabels, widestValues],
@@ -86,10 +72,6 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
 
   const columnWidths = measurement?.key === measureKey ? measurement.widths : null;
 
-  // First pass: the browser lays the table out with the sizing row below, which
-  // holds the widest content each column can ever show. Second pass (and every
-  // render after it): those widths are pinned with `table-layout: fixed`, so
-  // hovering a different date can no longer move a column.
   useIsomorphicLayoutEffect(() => {
     if (columnWidths) return;
     const container = containerRef.current;
@@ -99,9 +81,8 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
       Array.from(headerRow.cells, cell => cell.getBoundingClientRect().width),
     );
     if (widths.length !== columns.length) return;
-    // Rendered geometry cannot be known before a render, so measuring and
-    // storing it is the point of this effect rather than an accident. The
-    // `columnWidths` guard above keeps it to a single pass per measureKey.
+    // Measuring rendered geometry is what this effect is for; the
+    // `columnWidths` guard above keeps it to one pass per measureKey.
     // eslint-disable-next-line @eslint-react/set-state-in-effect
     setMeasurement({ key: measureKey, containerWidth: container.clientWidth, widths });
   }, [columnWidths, measureKey, columns.length]);
@@ -110,8 +91,6 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
     onColumnWidths?.(columnWidths);
   }, [columnWidths, onColumnWidths]);
 
-  // Pinned widths are only valid for the width they were measured at, so drop
-  // them when the container resizes and let the effect above measure again.
   useIsomorphicLayoutEffect(() => {
     const container = containerRef.current;
     if (!container || typeof ResizeObserver === 'undefined') return;
@@ -170,7 +149,6 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
           </tr>
         </thead>
         <tbody>
-          {/* Zero-height sizing row: only rendered until the widths are pinned. */}
           {!columnWidths && (
             <tr aria-hidden="true">
               {columns.map((col, i) => (
@@ -190,7 +168,6 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
               ))}
             </tr>
           )}
-          {/* Row of Colors */}
           <tr>
             {columns.map(col => {
               const isSeries = isSeriesColumn(col, columnStyles);
@@ -210,7 +187,6 @@ export const HoverDetails: React.FC<HoverDetailsProps> = ({
               );
             })}
           </tr>
-          {/* Row of Values */}
           <tr>
             {columns.map(col => {
               const isDate = isDateColumn(col);

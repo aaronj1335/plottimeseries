@@ -1,14 +1,11 @@
 /**
  * The whole pre-deploy check, in one command.
  *
- * `npm audit` needs the network, so it runs first and on its own. Everything
- * after it -- lint, typecheck, test, and the build itself -- runs inside a
- * network namespace with no egress, because those are the steps that execute
- * dependency code. A compromised package can still ruin the build, but it
- * cannot phone home or pull down a second stage while doing it.
- *
- * The sandbox is verified rather than assumed: `assertNoEgress` tries a real
- * connection and fails the run if it succeeds.
+ * `npm audit` needs the network, so it runs first and alone. Everything after
+ * it executes dependency code, so it runs inside a network namespace with no
+ * egress: a compromised package can ruin the build, but it cannot phone home
+ * or pull down a second stage while doing it. The sandbox is verified rather
+ * than assumed -- `assertNoEgress` tries a real connection.
  */
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -26,7 +23,6 @@ const SCREENSHOT = path.join('public', 'plottimeseries-screen-shot.png');
 
 const OFFLINE_STEPS = ['format:check', 'lint', 'typecheck', 'scriptc:coverage', 'test'];
 
-// Tried in order; the first one that can run a command is used.
 const SANDBOXES = [
   ['unshare', '--net', '--'],
   ['sudo', '-n', 'env', `PATH=${process.env.PATH ?? ''}`, 'unshare', '--net', '--'],
@@ -54,7 +50,6 @@ function pickSandbox(): string[] | undefined {
   });
 }
 
-// Confirm the sandbox actually severed egress rather than trusting the flag.
 function assertNoEgress(): Promise<void> {
   return new Promise((resolve, reject) => {
     const socket = net.connect({ host: '1.1.1.1', port: 443 });
@@ -70,10 +65,7 @@ function assertNoEgress(): Promise<void> {
   });
 }
 
-/**
- * Build the deployable site. This happens inside the sandbox so that what gets
- * uploaded is the artifact that was produced with no network available.
- */
+/** Runs inside the sandbox, so what gets uploaded was built with no network. */
 function buildSite(): void {
   fs.rmSync(SITE_DIR, { recursive: true, force: true });
   fs.mkdirSync(path.join(SITE_DIR, 'img'), { recursive: true });
@@ -110,7 +102,7 @@ function fail(message: string): never {
 }
 
 /**
- * Smoke-test the built site. The interesting check is the last one: every
+ * Smoke-test the built site. The last check is the load-bearing one: every
  * inline script and style must be covered by a hash in the CSP. Nothing else
  * catches a change that makes the policy and the page disagree, and the
  * symptom -- a blank page, only in production -- is easy to ship.
@@ -142,6 +134,18 @@ function checkBuildArtifacts(): void {
       fail(
         'An inline <script>/<style> in the built page is not covered by a CSP hash, ' +
           'so the browser will block it. Check scripts/plot-csv.ts.',
+      );
+    }
+  }
+
+  // inline[1] is the bundle; inline[0] is the report's data, which is the
+  // user's CSV and could say anything.
+  const bundle = inline[1] ?? '';
+  for (const construct of ['new Function', 'eval(']) {
+    if (bundle.includes(construct)) {
+      fail(
+        `The bundle contains \`${construct}\`, so the CSP would need 'unsafe-eval' to run it. ` +
+          'Parse and build what you need without compiling source at run time.',
       );
     }
   }

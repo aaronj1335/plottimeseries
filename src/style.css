@@ -1,8 +1,3 @@
-/*
- * The palette. These are the same names and values as THEME in src/theme.ts,
- * which is where the TypeScript side reads them from; src/theme.test.ts fails
- * if the two lists drift apart. Add a colour in both places or neither.
- */
 :root {
   --ground: #000000;
   --ground-alt: #0d0d0d;
@@ -48,12 +43,10 @@ body {
   color: var(--text);
 }
 
-/* Ensure app container is full width */
 #root {
   width: 100%;
 }
 
-/* Scrollbar styling for table */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -78,32 +71,22 @@ body {
   cursor: crosshair;
 }
 
-/* The hover row is a readout, not a heading: keep its labels quiet. */
 .hover-details th {
   font-weight: 400;
   text-transform: uppercase;
 }
 
-/*
- * The hover details is the data table's header, so it sits above the rows and
- * casts a shadow down over them.
- */
 .hover-details {
   position: relative;
   z-index: 1;
   box-shadow: 0 3px 9px rgb(0 0 0 / 90%);
 }
 
-/*
- * The table below shares the hover details' box, and its widths, so the two
- * read as one table.
- */
 .data-table-container {
   padding: 0 1rem;
   overflow-x: auto;
 }
 
-/* A hairline in the same ink as the plot's fine grid, hence the mix. */
 .data-table-container tbody tr {
   border-top: 1px solid color-mix(in srgb, var(--grid-ink) 8%, transparent);
 }

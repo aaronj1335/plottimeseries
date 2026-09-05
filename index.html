@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <!--
-  Dev-server entry (npm run dev). It loads the esbuild dev bundle from ./dist.
-
-  scripts/plot-csv.ts reuses this file to assemble a production report: it
-  replaces the PRODUCTION_* comments below with the inlined data, styles and
-  bundle, and strips the ./dist tags, which only exist for the dev server.
+  Dev-server entry. scripts/report.ts reuses it to assemble a production
+  report, replacing the PRODUCTION_* markers below and stripping the ./dist
+  tags -- so those markers are load-bearing, not comments.
 -->
 <html lang="en">
   <head>

@@ -7,7 +7,6 @@ const sum = (values: number[]) => values.reduce((total, value) => total + value,
 
 describe('apportionColumnWidths', () => {
   it('never totals more than the measured width', () => {
-    // Ceiling these 14 columns would add 7px and overflow the container.
     const measured = [
       80.5, 60.5, 60.5, 60.5, 60.5, 60.5, 60.5, 90.4, 90.4, 90.4, 90.4, 90.4, 90.4, 90.4,
     ];
@@ -16,7 +15,6 @@ describe('apportionColumnWidths', () => {
   });
 
   it('gives the leftover pixels to the largest remainders', () => {
-    // 10.9 + 10.1 + 10.9 = 31.9, so 31px across three whole columns.
     assert.deepStrictEqual(apportionColumnWidths([10.9, 10.1, 10.9]), [11, 10, 10]);
   });
 
@@ -34,7 +32,6 @@ describe('apportionColumnWidths', () => {
   });
 
   it('preserves overflow that the content really needs', () => {
-    // Nothing here is a rounding artifact, so the total is not trimmed.
     assert.strictEqual(sum(apportionColumnWidths([500, 500, 500])), 1500);
   });
 

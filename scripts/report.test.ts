@@ -79,8 +79,6 @@ describe('renderReport content security policy', () => {
   });
 
   it('hashes the data script over what is actually inlined, escaping included', () => {
-    // The escaping happens before hashing, so a `</` in the CSV must not put the
-    // policy and the page out of step.
     const input = {
       template,
       js: 'console.log(1)',
@@ -89,8 +87,6 @@ describe('renderReport content security policy', () => {
       chartOptions: {},
     };
     const html = renderReport(input);
-    // Non-greedy to the first real closing tag: the escaped one in the data
-    // reads `<\/script>`, so it cannot end the match early.
     const inlined = /<script>(window\.__INITIAL_CSV__[\s\S]*?)<\/script>/.exec(html);
 
     assert.ok(inlined, 'no data script in the report');
