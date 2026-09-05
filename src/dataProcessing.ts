@@ -372,13 +372,6 @@ export function analyzeColumnFormatters(
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
- * How much of the space between two neighbouring dates a clump of rows sharing
- * one date is allowed to occupy. Under 1 so a spread clump never reaches the
- * dates on either side of it.
- */
-const SPREAD_FRACTION = 0.4;
-
-/**
  * The typical distance between neighbouring dates, taken as the median so one
  * gap in an otherwise regular series does not set the scale for the whole plot.
  * A day when there are not two distinct dates to measure between.
@@ -396,10 +389,16 @@ function typicalDateGap(timestamps: number[]): number {
  * the same date read as two points a viewer can tell apart and hover
  * separately, rather than one hidden behind the other.
  *
- * The nudge is measured against the data's own spacing rather than a fixed
- * amount of time: half a day separates monthly points by a fraction of a pixel
- * and hourly points by more than their neighbours. Each clump is centred on the
- * date it belongs to, so spreading it does not drag the series later in time.
+ * Rows are spaced one gap between neighbouring dates divided by the number of
+ * rows sharing the date, so a daily series puts two rows 12 hours apart and
+ * three rows 8 hours apart. Dividing the gap rather than a fixed span of time
+ * is what keeps the spread to scale: half a day separates monthly points by a
+ * fraction of a pixel and hourly points by more than their neighbours. Dividing
+ * by the size of the clump keeps the whole of it inside one gap however many
+ * rows it holds, since n - 1 steps of gap / n never add up to a gap.
+ *
+ * Each clump is centred on the date it belongs to, so spreading it does not
+ * drag the series later in time.
  */
 export function spreadDuplicateDates(data: DataPoint[]): DataPoint[] {
   const groups = new Map<number, number[]>();
@@ -408,14 +407,14 @@ export function spreadDuplicateDates(data: DataPoint[]): DataPoint[] {
     groups.set(ts, [...(groups.get(ts) ?? []), i]);
   });
 
-  const width = SPREAD_FRACTION * typicalDateGap([...groups.keys()]);
+  const gap = typicalDateGap([...groups.keys()]);
 
   return data.map((d, i) => {
     const group = groups.get(d.date.getTime())!;
     if (group.length <= 1) return d;
-    // Spread across `width` and centred: the first row sits half a width early,
-    // the last half a width late, and for one row the two would cancel out.
-    const offset = width * (group.indexOf(i) / (group.length - 1) - 0.5);
+    const step = gap / group.length;
+    // Measured from the middle of the clump, so the offsets cancel out across it.
+    const offset = (group.indexOf(i) - (group.length - 1) / 2) * step;
     return { ...d, date: new Date(d.date.getTime() + Math.round(offset)) };
   });
 }
