@@ -7,7 +7,6 @@ import { contentType, isInside, resolveStaticFile } from './staticFiles.ts';
 const ROOT = path.resolve('/srv/app');
 const PUBLIC = path.resolve('/srv/app/public');
 
-/** A stand-in disk: only these paths exist. */
 function disk(...files: string[]) {
   const present = new Set(files.map(f => path.resolve(f)));
   return (filePath: string) => present.has(filePath);
@@ -86,8 +85,6 @@ describe('resolveStaticFile', () => {
   });
 
   it('refuses a percent-encoded climb, which survives URL parsing intact', () => {
-    // `new URL()` normalises `../` but leaves `%2e%2e` alone, so this is the
-    // form that actually reaches the server.
     for (const attempt of [
       '/%2e%2e/etc/passwd',
       '/%2E%2E%2Fetc%2Fpasswd',

@@ -8,8 +8,7 @@ import { contentType, resolveStaticFile } from './staticFiles.ts';
 
 const dirName = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 3000;
-// Loopback only. The dev server reads files off disk with no authentication,
-// so it has no business being reachable from the rest of the network.
+// Loopback only: the dev server reads files off disk with no authentication.
 const HOST = '127.0.0.1';
 const ROOT_DIR = path.resolve(dirName, '..');
 const PUBLIC_DIR = path.resolve(ROOT_DIR, 'public');
@@ -52,8 +51,6 @@ async function start(): Promise<void> {
       return;
     }
 
-    // The repository root first, then public/. The dev bundle under dist/ needs
-    // no special case: it is already inside the root.
     const resolved = resolveStaticFile(pathname, [ROOT_DIR, PUBLIC_DIR], fs.existsSync);
 
     if (resolved.kind === 'forbidden') {

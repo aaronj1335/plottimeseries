@@ -18,11 +18,10 @@ describe('subdivideGridPositions', () => {
     const majors = [0, 50, 100, 150];
     const minors = subdivideGridPositions(majors, 5, [0, 150]);
     majors.forEach(major => assert.ok(!minors.includes(major), `${major} is a major`));
-    assert.strictEqual(minors.length, 12); // 3 gaps x 4 in-between lines, no room outside
+    assert.strictEqual(minors.length, 12);
   });
 
   it('carries the outer step widths to the edges of the extent', () => {
-    // Majors at 40 and 60 in a 0..100 area: the 5px step keeps going both ways.
     const minors = sortedRounded(subdivideGridPositions([40, 60], 4, [0, 100]));
     assert.deepStrictEqual(
       minors,
@@ -31,7 +30,6 @@ describe('subdivideGridPositions', () => {
   });
 
   it('subdivides unevenly spaced majors gap by gap', () => {
-    // Time ticks are rarely evenly spaced, so each gap gets its own step.
     assert.deepStrictEqual(sortedRounded(subdivideGridPositions([0, 10, 40], 2, [0, 40])), [5, 25]);
   });
 

@@ -1,8 +1,3 @@
-/**
- * Chart-wide settings. Unlike column styles, these are not a property of the
- * data, so they come from the command line (injected as `window.__CHART_OPTIONS__`)
- * or from query parameters.
- */
 export interface ChartOptions {
   yMax?: number;
   yMin?: number;
