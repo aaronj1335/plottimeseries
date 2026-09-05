@@ -137,6 +137,18 @@ function checkBuildArtifacts(): void {
       );
     }
   }
+
+  // inline[1] is the bundle; inline[0] is the report's data, which is the
+  // user's CSV and could say anything.
+  const bundle = inline[1] ?? '';
+  for (const construct of ['new Function', 'eval(']) {
+    if (bundle.includes(construct)) {
+      fail(
+        `The bundle contains \`${construct}\`, so the CSP would need 'unsafe-eval' to run it. ` +
+          'Parse and build what you need without compiling source at run time.',
+      );
+    }
+  }
 }
 
 async function offlineSteps(sandboxed: boolean): Promise<void> {

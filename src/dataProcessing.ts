@@ -1,4 +1,4 @@
-import * as d3 from 'd3';
+import { parseCSVRows } from './csv.ts';
 
 export interface DataPoint {
   date: Date;
@@ -211,10 +211,7 @@ export function parseCSV(csvString: string): {
 } {
   const { csv, columnStyles } = extractColumnStyles(csvString);
 
-  // csvParseRows, not csvParse: csvParse builds its row-to-object function with
-  // `new Function` out of the column names, which forces 'unsafe-eval' into the
-  // CSP and gives away what hashing the bundle buys.
-  const rows = d3.csvParseRows(csv);
+  const rows = parseCSVRows(csv);
 
   const [columns, ...records] = rows;
   if (columns === undefined || records.length === 0) {
