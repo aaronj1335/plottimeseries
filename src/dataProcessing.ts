@@ -369,20 +369,54 @@ export function analyzeColumnFormatters(
   return formatters;
 }
 
-export function spreadDuplicateDates(data: DataPoint[]): DataPoint[] {
-  const msPerDay = 24 * 60 * 60 * 1000;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/**
+ * How much of the space between two neighbouring dates a clump of rows sharing
+ * one date is allowed to occupy. Under 1 so a spread clump never reaches the
+ * dates on either side of it.
+ */
+const SPREAD_FRACTION = 0.4;
+
+/**
+ * The typical distance between neighbouring dates, taken as the median so one
+ * gap in an otherwise regular series does not set the scale for the whole plot.
+ * A day when there are not two distinct dates to measure between.
+ */
+function typicalDateGap(timestamps: number[]): number {
+  const sorted = [...timestamps].sort((a, b) => a - b);
+  const gaps = sorted.slice(1).map((ts, i) => ts - sorted[i]!);
+  if (gaps.length === 0) return MS_PER_DAY;
+  gaps.sort((a, b) => a - b);
+  return gaps[Math.floor(gaps.length / 2)]!;
+}
+
+/**
+ * Nudges rows that share a date apart along the time axis, so that two rows on
+ * the same date read as two points a viewer can tell apart and hover
+ * separately, rather than one hidden behind the other.
+ *
+ * The nudge is measured against the data's own spacing rather than a fixed
+ * amount of time: half a day separates monthly points by a fraction of a pixel
+ * and hourly points by more than their neighbours. Each clump is centred on the
+ * date it belongs to, so spreading it does not drag the series later in time.
+ */
+export function spreadDuplicateDates(data: DataPoint[]): DataPoint[] {
   const groups = new Map<number, number[]>();
   data.forEach((d, i) => {
     const ts = d.date.getTime();
     groups.set(ts, [...(groups.get(ts) ?? []), i]);
   });
 
+  const width = SPREAD_FRACTION * typicalDateGap([...groups.keys()]);
+
   return data.map((d, i) => {
     const group = groups.get(d.date.getTime())!;
     if (group.length <= 1) return d;
-    const pos = group.indexOf(i);
-    return { ...d, date: new Date(d.date.getTime() + Math.floor((pos * msPerDay) / group.length)) };
+    // Spread across `width` and centred: the first row sits half a width early,
+    // the last half a width late, and for one row the two would cancel out.
+    const offset = width * (group.indexOf(i) / (group.length - 1) - 0.5);
+    return { ...d, date: new Date(d.date.getTime() + Math.round(offset)) };
   });
 }
 
