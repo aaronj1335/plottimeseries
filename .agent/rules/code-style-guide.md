@@ -41,15 +41,26 @@ Comment the *why*, not the *what*. A comment earns its place when it records
 something the code cannot: a constraint from outside the file, a decision with
 a discarded alternative, a subtle failure mode.
 
-Two constraints in this repo exist only as comments, and both are load-bearing:
+Prefer a check to a comment. A constraint a build step can test is worth more
+as a failing build than as a note someone has to read first, so `npm run
+validate` enforces these rather than describing them:
 
 - `scripts/cli.ts` and everything it imports must stay inside the subset of
   TypeScript that scriptc compiles statically — no `throw`, no regular
   expressions, no DOM types. `npm run scriptc:coverage` reports what does not
-  compile, and `npm run validate` fails if anything does not.
-- The CSP hashes in `scripts/securityHeaders.ts` are taken over the exact bytes
-  that end up inline in the report. Anything that changes those strings after
-  hashing gives a blank page in production only.
+  compile.
+- The bundle must contain no `new Function` or `eval(`, either of which would
+  need `'unsafe-eval'` in the CSP. This is why `src/csv.ts` parses the CSV
+  itself instead of reaching for `d3.csvParse`.
+- Every inline `<script>` and `<style>` in the built page must be covered by a
+  CSP hash. The hashes are taken over the exact bytes that end up inline, so
+  anything that rewrites those strings after hashing gives a blank page in
+  production only.
+
+What is left to a comment is what no check can reach: why the runtime frame
+guard in `src/frameGuard.ts` exists when the CSP looks like it should cover
+clickjacking, and why the policy in `scripts/securityHeaders.ts` is shaped the
+way it is.
 
 Do not narrate. `// increment i` is noise; so is a comment restating the
 function name above it.
