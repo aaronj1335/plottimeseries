@@ -14,6 +14,14 @@ You can pass a CSV file as a query parameter like [this](https://aaronstacy.com/
 
 You can also upload a CSV file using the button in the upper right corner.
 
+The **Spread Duplicate Dates** checkbox next to that button nudges rows that
+share a date apart along the time axis, so rows on the same date read as
+separate points rather than one hiding the others.
+[This CSV](https://aaronstacy.com/plottimeseries?csv=date%2Cprice%2Ctrade%0A2026-01-01%2C10%2CA%0A2026-01-02%2C4%2CB%0A2026-01-02%2C16%2CC%0A2026-01-02%2C7%2CD%0A2026-01-02%2C13%2CE%0A2026-01-03%2C11%2CF%0A2026-01-04%2C6%2CG%0A2026-01-04%2C14%2CH%0A2026-01-05%2C12%2CI)
+has four rows on `2026-01-02` and two on `2026-01-04`: with the box checked
+each clump fans out across the day and can be hovered a row at a time, and
+unchecking it collapses the clump back into one vertical line.
+
 ### CLI
 
 Every commit on `main` publishes prebuilt artifacts to the
