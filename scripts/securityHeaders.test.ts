@@ -23,9 +23,6 @@ test('the policy denies everything by default and allows only the built sources'
 test('the policy never relaxes script execution', () => {
   const csp = contentSecurityPolicy(SOURCES);
 
-  // 'unsafe-eval' would let anything that reaches eval/new Function run, and
-  // 'strict-dynamic' would let an allowed script vouch for scripts it loads.
-  // Either one gives away what the hashes are here to buy.
   assert.ok(!csp.includes('unsafe-eval'));
   assert.ok(!csp.includes('strict-dynamic'));
   assert.ok(!csp.includes(`script-src-elem`));

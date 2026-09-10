@@ -135,7 +135,6 @@ describe('analyzeColumnFormatters', () => {
 
     const formatters = analyzeColumnFormatters(data, columns, columnStyles);
 
-    // Without a style, [-2, 2] would have been formatted as a percentage.
     assert.strictEqual(defined(formatters['a'])(0.7), '0.70');
     assert.strictEqual(defined(formatters['b'])(0.7), '1');
     assert.strictEqual(defined(formatters['c'])(0.7), '70%');
@@ -245,7 +244,6 @@ describe('parseColumnStyle', () => {
     assert.deepStrictEqual(parseColumnStyle('type: currency, currency: usdollar'), {
       type: 'currency',
     });
-    // The default currency still formats rather than throwing.
     const formatters = analyzeColumnFormatters([{ date: new Date(), val: 1 }], ['val'], {
       val: parseColumnStyle('type: currency, currency: usdollar'),
     });

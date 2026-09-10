@@ -21,9 +21,6 @@ declare global {
 }
 
 function App() {
-  // The four parts of a parsed CSV are always replaced together, so they are
-  // one piece of state. Held apart, a render could catch new columns against
-  // the previous rows.
   const [dataset, setDataset] = useState<ProcessedCSV>(EMPTY_CSV);
   const { data, formattedData, columns, columnStyles } = dataset;
   const [loading, setLoading] = useState(true);
@@ -31,11 +28,8 @@ function App() {
 
   const chartOptions = useMemo(() => getChartOptions(window), []);
 
-  // The hover details doubles as the data table's header, and hands down the
-  // column widths it measured so the two line up.
   const [columnWidths, setColumnWidths] = useState<number[] | null>(null);
 
-  // Interaction State
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
   const [isolatedSeries, setIsolatedSeries] = useState<string | null>(null);
   // Both plot toggles start on: the chart is the point of the page, so it
@@ -44,9 +38,6 @@ function App() {
   const [isSticky, setIsSticky] = useState(true);
   const [spreadDates, setSpreadDates] = useState(true);
 
-  // Every CSV arrives through here, however it was fetched, so that one CSV is
-  // rejected and one view is reset the same way whether it came from the page
-  // load or from the upload button.
   const loadCSV = useCallback(async (readCSV: () => Promise<string>) => {
     setLoading(true);
     setError(null);
@@ -65,10 +56,9 @@ function App() {
     }
   }, []);
 
-  // Fetching the page's own CSV is the external system this effect exists to
-  // read from, and `loadCSV` raises the loading flag before it awaits
-  // anything. That is the render this is here to cause, not a cascade.
   useEffect(() => {
+    // Reading the page's own CSV is the external system this effect is for;
+    // `loadCSV` raises the loading flag before it awaits anything.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadCSV(() =>
       getCSVData(window, async () => {
@@ -79,7 +69,6 @@ function App() {
     );
   }, [loadCSV]);
 
-  // Apply date spreading
   const displayData = useMemo(() => {
     if (!spreadDates) return data;
     return spreadDuplicateDates(data);
@@ -87,24 +76,19 @@ function App() {
 
   const displayFormattedData = useMemo(() => {
     if (!spreadDates) return formattedData;
-    // The two arrays are built from the same rows, so the lookup always hits;
-    // keeping the row's own date if it ever did not is better than throwing.
     return formattedData.map((fd, i) => ({ ...fd, date: displayData[i]?.date ?? fd.date }));
   }, [formattedData, displayData, spreadDates]);
 
-  // Generate Colors
   const columnColors = useMemo(() => {
     const colors: Record<string, string> = {};
     const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
     columns.forEach(col => {
-      // Always advance the scale so styling one column does not recolor the rest.
       const generated = colorScale(col);
       colors[col] = columnStyles[col]?.color ?? generated;
     });
     return colors;
   }, [columns, columnStyles]);
 
-  // Handlers
   const handleSelectSeries = (series: string) => {
     setIsolatedSeries(prev => (prev === series ? null : series));
   };
@@ -124,7 +108,7 @@ function App() {
           position: isSticky ? 'sticky' : 'static',
           top: 0,
           zIndex: 100,
-          backgroundColor: cssVar('ground'), // Ensure opacity
+          backgroundColor: cssVar('ground'),
         }}
       >
         <TimeSeriesChart

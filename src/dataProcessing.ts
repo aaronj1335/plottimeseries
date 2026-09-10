@@ -1,4 +1,4 @@
-import * as d3 from 'd3';
+import { parseCSVRows } from './csv.ts';
 
 export interface DataPoint {
   date: Date;
@@ -45,26 +45,17 @@ const FORMAT_TYPES: Record<string, ColumnFormatType> = {
 };
 
 export function formatDate(date: Date): string {
-  // slice, not split('T')[0]: an ISO string is always 24 characters, so this
-  // is the same answer without an index that could in principle miss.
   return date.toISOString().slice(0, 10);
 }
 
-/** Narrows a formatted cell value to the markdown-style link it may hold. */
 export function isLinkData(val: unknown): val is LinkData {
   return typeof val === 'object' && val !== null && 'linkText' in val && 'url' in val;
 }
 
-/**
- * True for the column the x axis is drawn from. Which column that is, is a
- * property of its name and nothing else, so every reader has to agree on the
- * same rule -- including that the name is matched case-insensitively.
- */
 export function isDateColumn(name: string): boolean {
   return name.toLowerCase() === 'date';
 }
 
-/** True when a column is a candidate for plotting, i.e. not the date and not opted out. */
 export function isSeriesColumn(name: string, columnStyles: ColumnStyles = {}): boolean {
   return !isDateColumn(name) && columnStyles[name]?.plot !== false;
 }
@@ -76,11 +67,6 @@ export function formatColumnName(name: string, style?: ColumnStyle): string {
   return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
 }
 
-/**
- * Splits a CSV header line into fields. Beyond standard double-quoting, commas
- * inside a `{...}` style spec do not separate fields, and a comma there can also
- * be escaped with a backslash.
- */
 export function splitHeaderLine(line: string): string[] {
   const fields: string[] = [];
   let current = '';
@@ -121,7 +107,6 @@ export function splitHeaderLine(line: string): string[] {
   return fields;
 }
 
-/** Splits a style spec body on commas, ignoring commas inside quoted values. */
 function splitSpecEntries(spec: string): string[] {
   const entries: string[] = [];
   let current = '';
@@ -145,10 +130,6 @@ function splitSpecEntries(spec: string): string[] {
   return entries;
 }
 
-/**
- * Parses the body of a column style spec, e.g. `type: decimal, places: 2`.
- * Unrecognized keys and values are ignored so a typo cannot break the plot.
- */
 export function parseColumnStyle(spec: string): ColumnStyle {
   const style: ColumnStyle = {};
 
@@ -173,7 +154,6 @@ export function parseColumnStyle(spec: string): ColumnStyle {
         break;
       }
       case 'currency':
-        // Intl throws on anything that is not a 3-letter code.
         if (/^[a-zA-Z]{3}$/.test(value)) style.currency = value.toUpperCase();
         break;
       case 'color':
@@ -191,7 +171,6 @@ export function parseColumnStyle(spec: string): ColumnStyle {
   return style;
 }
 
-/** Splits a header field into its column name and its optional `{...}` style spec. */
 export function parseColumnHeader(header: string): { name: string; style: ColumnStyle } {
   const match = header.match(/^([^{]*)\{(.*)\}\s*$/s);
   if (!match) return { name: header, style: {} };
@@ -203,10 +182,6 @@ function escapeCSVField(field: string): string {
   return /["\n,]/.test(field) ? `"${field.replace(/"/g, '""')}"` : field;
 }
 
-/**
- * Pulls style specs off the header line, returning the CSV with plain column
- * names so it can be handed to a standard CSV parser.
- */
 export function extractColumnStyles(csvString: string): {
   csv: string;
   columnStyles: ColumnStyles;
@@ -236,15 +211,9 @@ export function parseCSV(csvString: string): {
 } {
   const { csv, columnStyles } = extractColumnStyles(csvString);
 
-  // csvParseRows, not csvParse. csvParse compiles a row-to-object function with
-  // `new Function`, assembling the source out of the column names -- which can
-  // come from the `?csv=` parameter. That forces 'unsafe-eval' into the CSP,
-  // which would undo the point of hashing the bundle. Rows are plain arrays, so
-  // parsing them costs nothing but an index lookup.
-  const rows = d3.csvParseRows(csv);
+  const rows = parseCSVRows(csv);
 
   const [columns, ...records] = rows;
-  // A file with no header, or a header and nothing under it, has no data.
   if (columns === undefined || records.length === 0) {
     return { data: [], columns: [], columnStyles };
   }
@@ -277,7 +246,6 @@ export function parseCSV(csvString: string): {
   return { data, columns, columnStyles };
 }
 
-/** Builds a formatter from an explicit column style, or null if it says nothing about numbers. */
 function styledFormatter(style: ColumnStyle | undefined): NumberFormatter | null {
   if (!style || (!style.type && style.places == null)) return null;
 
@@ -419,11 +387,6 @@ export function spreadDuplicateDates(data: DataPoint[]): DataPoint[] {
   });
 }
 
-/**
- * Everything a CSV yields. These four move together -- a set of columns only
- * describes the rows it was parsed alongside -- so they are one value rather
- * than four.
- */
 export interface ProcessedCSV {
   data: DataPoint[];
   formattedData: FormattedDataPoint[];
@@ -431,7 +394,6 @@ export interface ProcessedCSV {
   columnStyles: ColumnStyles;
 }
 
-/** A parsed nothing, for before the first CSV arrives. */
 export const EMPTY_CSV: ProcessedCSV = {
   data: [],
   formattedData: [],

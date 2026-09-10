@@ -8,24 +8,10 @@ import { cssVar, THEME } from '../theme.ts';
 const CLIP_ID = 'plot-area-clip';
 const GRADIENT_ID = 'plot-area-gradient';
 
-/**
- * Target number of major grid lines per axis. The axes label the very same
- * ticks, which is what keeps labels, major lines and fine lines on one grid.
- */
 const MAJOR_TICKS = 10;
-
-/** Fine grid lines per major interval, engineering-paper style. */
 const GRID_DIVISIONS = 5;
-
-// d3 writes SVG presentation attributes, and `var()` is not resolved in one,
-// so the plot takes literals from THEME while the JSX below takes custom
-// properties. theme.test.ts is what keeps the two spellings the same colour.
 const GRID_COLOR = THEME.gridInk;
-
-/** Rescaling and isolating a series, as clicking a header does. */
 const UPDATE_MS = 750;
-
-/** The marker stroke that draws each series in when it first appears. */
 const DRAW_MS = 1500;
 
 const MARGIN = { top: 20, right: 30, bottom: 30, left: 80 };
@@ -88,9 +74,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   const innerWidth = dimensions.width - MARGIN.left - MARGIN.right;
   const innerHeight = dimensions.height - MARGIN.top - MARGIN.bottom;
 
-  // The scales are shared by the two effects below -- the one that draws the
-  // plot and the one that moves the cursor rule across it -- so they are
-  // computed once here rather than inside either.
   const x = useMemo(
     () =>
       d3
@@ -114,16 +97,14 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       yMin = 0;
     }
 
-    // Explicit chart settings win over the data-derived domain.
     if (chartOptions.yMax != null) yMax = chartOptions.yMax;
     if (chartOptions.yMin != null) yMin = chartOptions.yMin;
 
     return d3.scaleLinear().domain([yMin, yMax]).range([innerHeight, 0]);
   }, [data, plottableColumns, isolatedSeries, chartOptions, innerHeight]);
 
-  // Draws the plot. Deliberately does not depend on `hoveredDate`: moving the
-  // pointer must not re-enter this, or every mouse move would restart the
-  // 750ms transitions below and rebuild every path.
+  // Deliberately does not depend on `hoveredDate`: a mouse move must not
+  // re-enter this, or it would restart every transition and rebuild every path.
   useEffect(() => {
     if (!containerRef.current || !svgRef.current || !data.length) return;
 
@@ -133,14 +114,11 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     const height = dimensions.height;
     if (width === 0 || height === 0) return;
 
-    // 1. Setup Groups (Idempotent)
     let g = svg.select<SVGGElement>('g.main-group');
     if (g.empty()) {
       g = svg.append('g').attr('class', 'main-group');
       const defs = svg.append('defs');
 
-      // Plot backdrop: black at the baseline, lifting to a barely-there blue
-      // toward the top of the plot area.
       const gradient = defs
         .append('linearGradient')
         .attr('id', GRADIENT_ID)
@@ -152,15 +130,12 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       gradient.append('stop').attr('offset', '55%').attr('stop-color', THEME.plotMid);
       gradient.append('stop').attr('offset', '100%').attr('stop-color', THEME.plotBottom);
 
-      // Order matters for layering
       g.append('rect').attr('class', 'plot-background').attr('fill', `url(#${GRADIENT_ID})`);
       g.append('g').attr('class', 'grid-minor').style('opacity', 0.07);
       g.append('g').attr('class', 'grid-v').style('opacity', 0.16);
       g.append('g').attr('class', 'grid-h').style('opacity', 0.16);
       g.append('g').attr('class', 'axis-x').attr('transform', `translate(0,${innerHeight})`);
       g.append('g').attr('class', 'axis-y');
-      // Clip the lines so an explicit y-min/y-max crops the series instead of
-      // letting them draw over the axes.
       defs.append('clipPath').attr('id', CLIP_ID).append('rect');
       g.append('g').attr('class', 'lines-group').attr('clip-path', `url(#${CLIP_ID})`);
       g.append('line')
@@ -179,7 +154,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     svg.attr('width', width).attr('height', height);
     g.attr('transform', `translate(${MARGIN.left},${MARGIN.top})`);
 
-    // Update axes positions if dimensions changed
     g.select<SVGGElement>('.axis-x').attr('transform', `translate(0,${innerHeight})`);
     g.select<SVGGElement>('.hover-overlay').attr('width', innerWidth).attr('height', innerHeight);
     g.select('.plot-background')
@@ -194,11 +168,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       .attr('width', innerWidth)
       .attr('height', innerHeight);
 
-    // 2. Transitions
-    // One transition shared by every update below, so they move together. The
-    // cast widens the element type: `.transition(t)` is called on selections of
-    // several different element types, and each wants a transition it can
-    // accept.
+    // The cast widens the element type: `.transition(t)` is called on
+    // selections of several element types, each wanting one it can accept.
     const t = svg.transition().duration(UPDATE_MS) as unknown as d3.Transition<
       d3.BaseType,
       unknown,
@@ -206,7 +177,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       undefined
     >;
 
-    // Major grid lines, on the same tick values the axes label.
     const yTicks = y.ticks(MAJOR_TICKS);
     const xTicks = x.ticks(MAJOR_TICKS);
 
@@ -237,7 +207,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       .selectAll('line')
       .attr('stroke', GRID_COLOR);
 
-    // Fine grid, subdividing the major intervals exactly so the two line up.
     const minorLines = [
       ...subdivideGridPositions(yTicks.map(y), GRID_DIVISIONS, [0, innerHeight]).map(pos => ({
         x1: 0,
@@ -264,14 +233,11 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       .attr('y1', d => d.y1)
       .attr('y2', d => d.y2);
 
-    // Axes
-    g.select<SVGGElement>('.axis-x').call(d3.axisBottom(x).tickValues(xTicks)); // X usually static unless data changes time range
+    g.select<SVGGElement>('.axis-x').call(d3.axisBottom(x).tickValues(xTicks));
     g.select<SVGGElement>('.axis-y').transition(t).call(d3.axisLeft(y).tickValues(yTicks));
 
-    // 4. Lines
     const lineGenerator = d3.line<DataPoint>().x(d => x(d.date));
 
-    // Line for dropping to zero
     const zeroLineGenerator = d3
       .line<DataPoint>()
       .x(d => x(d.date))
@@ -286,21 +252,15 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
       if (isolatedSeries && isolatedSeries !== col) {
         return zeroLineGenerator(data) || '';
       }
-      // Active line
       return lineGenerator.y(d => y(d[col] as number))(data) || '';
     };
 
-    // Enter: draw the line in its final shape, then reveal it left to right by
-    // walking a full-length dash gap off the end, like a marker stroke. The
-    // transition is named so the shared `t` on updates never cancels it.
     lines
       .enter()
       .append('path')
       .attr('class', 'series-line')
       .attr('fill', 'none')
       .attr('stroke-width', 1.5)
-      // null rather than undefined for a column with no assigned colour: d3
-      // reads that as "remove the attribute" instead of writing "undefined".
       .attr('stroke', col => columnColors[col] ?? null)
       .attr('d', pathFor)
       .each(function () {
@@ -308,8 +268,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         const length = typeof this.getTotalLength === 'function' ? this.getTotalLength() : 0;
         if (!length) return;
 
-        // Leaving the dash attributes behind would clip later updates, so drop
-        // them however the reveal ends.
         const clearDash = () => {
           path.attr('stroke-dasharray', null).attr('stroke-dashoffset', null);
         };
@@ -326,18 +284,13 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           .on('cancel', clearDash);
       });
 
-    // Update
     lines
       .transition(t)
-      .attr('stroke', col => columnColors[col] ?? null) // Ensure color updates if needed
+      .attr('stroke', col => columnColors[col] ?? null)
       .attr('d', pathFor);
 
-    // Exit
     lines.exit().remove();
 
-    // 4. Interactions
-    // Re-bound rather than added, so the handler closes over the current data
-    // and scales instead of the ones it was first drawn with.
     g.select('.hover-overlay').on('mousemove', event => {
       const [mx] = d3.pointer(event);
       const date = x.invert(mx);
@@ -365,8 +318,6 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     innerHeight,
   ]);
 
-  // The cursor rule, on its own so a mouse move touches one line's geometry
-  // rather than re-running the whole draw above.
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -391,9 +342,9 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   return (
     <div
       style={{
-        position: 'relative', // Changed from internal stickiness
+        position: 'relative',
         zIndex: 90,
-        background: cssVar('ground'), // Match body bg
+        background: cssVar('ground'),
         borderBottom: `1px solid ${cssVar('rule')}`,
         color: cssVar('text'),
       }}

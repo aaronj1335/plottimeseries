@@ -27,9 +27,9 @@ function insertAt(html: string, marker: string, value: string): string {
 }
 
 /**
- * The inline scripts and styles a report ends up containing, in document order.
- * The CSP hashes have to be taken over exactly these strings, so they are built
- * once and used for both the report and the `_headers` file.
+ * The inline scripts and styles a report contains, in document order. The CSP
+ * hashes are taken over exactly these strings, so they are built once and used
+ * for both the report and the `_headers` file.
  */
 export function inlineSources(input: ReportInput): InlineSources {
   const data =
@@ -54,8 +54,6 @@ export function renderReport(input: ReportInput): string {
   html = insertAt(html, '<!--PRODUCTION_STYLE-->', `<style>${input.css}</style>`);
   html = insertAt(html, '<!--PRODUCTION_SCRIPT-->', `<script>${input.js}</script>`);
 
-  // The dev server's ./dist tags. Nothing is served next to a report, so they
-  // would 404, and the CSP blocks them anyway -- which shows up in the console.
   html = html.split('<link rel="stylesheet" href="./dist/app.css">').join('');
   html = html.split('<script type="module" src="./dist/app.js"></script>').join('');
 

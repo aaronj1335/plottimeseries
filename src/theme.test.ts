@@ -11,7 +11,6 @@ const styleSheet = fs.readFileSync(
   'utf-8',
 );
 
-/** The first `:root { ... }` block, which is the palette. */
 function declaredCustomProperties(): Map<string, string> {
   const block = /:root\s*\{([^}]*)\}/.exec(styleSheet);
   assert.ok(block, 'style.css has no :root block');

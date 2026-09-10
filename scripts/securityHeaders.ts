@@ -1,24 +1,22 @@
 /**
  * Security policy for the generated report.
  *
- * A report is a single self-contained HTML file: the CSV, the styles and the
- * whole JS bundle are inlined into it. That makes a hash-based CSP a natural
- * fit -- there is nothing to load, so everything except the exact scripts and
- * styles we built can be denied.
+ * A report is a single self-contained HTML file -- CSV, styles and bundle all
+ * inlined -- so a hash-based CSP can deny everything except the exact scripts
+ * and styles we built. The hashes are taken over the bytes that end up inline:
+ * anything that rewrites those strings after hashing gives a blank page in
+ * production only.
  *
- * The policy is emitted twice, because the two delivery mechanisms cover
- * different situations and neither is sufficient alone:
+ * The policy is emitted twice, because neither delivery mechanism suffices:
  *
- *   1. A `<meta http-equiv="Content-Security-Policy">` tag in the document.
- *      This travels with the file, so it still applies to a report emailed
- *      around and opened from disk, and it works on GitHub Pages, which serves
- *      static files with fixed headers and no way to add response headers.
+ *   1. A `<meta http-equiv="Content-Security-Policy">` tag, which travels with
+ *      a report emailed around or opened from disk, and works on GitHub Pages,
+ *      which serves static files with fixed headers.
  *
- *   2. A `_headers` file next to the site, written by `--headers-file`. GitHub
- *      Pages ignores this -- it is the Cloudflare Pages / Netlify convention --
- *      but it is the only way to deliver the header-only directives
- *      (`frame-ancestors`, `X-Frame-Options`, `X-Content-Type-Options`), so it
- *      is written for the day the site moves to a host that honours it.
+ *   2. A `_headers` file, written by `--headers-file`. GitHub Pages ignores it
+ *      -- it is the Cloudflare Pages / Netlify convention -- but it is the only
+ *      way to deliver the header-only directives (`frame-ancestors`,
+ *      `X-Frame-Options`, `X-Content-Type-Options`).
  *
  * Because `frame-ancestors` is ignored in a `<meta>` tag, clickjacking defense
  * on GitHub Pages falls to the runtime check in `src/frameGuard.ts`.
@@ -66,9 +64,9 @@ function directives(sources: InlineSources): string[] {
     // The app renders no images; `self` and `data:` only exist so a favicon
     // request doesn't log a violation on every page load.
     `img-src 'self' data:`,
-    // The report has its CSV inlined, so this is only used by the documented
-    // fallback that fetches `/data.csv` from the site itself. Same-origin only:
-    // a compromised dependency has nowhere to send the data.
+    // Only used by the documented fallback that fetches `/data.csv` from the
+    // site itself. Same-origin only: a compromised dependency has nowhere to
+    // send the data.
     `connect-src 'self'`,
     `base-uri 'none'`,
     `form-action 'none'`,
@@ -82,10 +80,6 @@ export function contentSecurityPolicy(sources: InlineSources): string {
   return directives(sources).join('; ');
 }
 
-/**
- * A Cloudflare Pages / Netlify `_headers` file. Ignored by GitHub Pages; see
- * the note at the top of this file.
- */
 export function headersFile(sources: InlineSources): string {
   const csp = directives(sources);
   // Header-only directive: unlike the <meta> copy, this one is enforced.

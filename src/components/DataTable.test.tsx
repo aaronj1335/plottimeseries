@@ -38,8 +38,6 @@ test('DataTable renders correctly with styled columns', async t => {
   const csv = `date,ratio{type: percent\\, places: 2},revenue{type: currency, label: 'Net revenue'}
 2023-01-01,0.15,45.5
 2023-01-02,-0.8,-99.25`;
-  // The styles reach the table through the formatted values, not the markup:
-  // the header that used to carry the labels now lives in the hover details.
   const { formattedData, columns } = processCSV(csv);
   const element = React.createElement(DataTable, {
     formattedData,
