@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
+import * as zlib from 'node:zlib';
 import { getCSVData } from './data.ts';
 
 const TEST_CSV = `date,pct_change,amount,category
@@ -9,6 +10,37 @@ const TEST_CSV = `date,pct_change,amount,category
 2023-01-04,1.0,100,High
 2023-01-05,-0.33,-5.5,Low
 2023-01-06,0.5,0.05,Medium`;
+
+const fragment = (csv: string): string =>
+  zlib.gzipSync(Buffer.from(csv, 'utf-8')).toString('base64url');
+
+test('getCSVData prefers the fragment over every other source', async () => {
+  const win = {
+    location: {
+      href: `http://localhost:3000/?csv=csv-from-query#csv=${fragment(TEST_CSV)}`,
+    },
+    __INITIAL_CSV__: 'csv-from-window',
+  } as unknown as Window;
+
+  const loadDefault = () => Promise.resolve('csv-from-fetch');
+
+  const result = await getCSVData(win, loadDefault);
+  assert.strictEqual(result, TEST_CSV);
+});
+
+test('getCSVData ignores a fragment that is not the csv key', async () => {
+  const win = {
+    location: {
+      href: 'http://localhost:3000/#section=notes',
+    },
+    __INITIAL_CSV__: 'csv-from-window',
+  } as unknown as Window;
+
+  const loadDefault = () => Promise.resolve('csv-from-fetch');
+
+  const result = await getCSVData(win, loadDefault);
+  assert.strictEqual(result, 'csv-from-window');
+});
 
 test('getCSVData prefer query parameter', async () => {
   const win = {
