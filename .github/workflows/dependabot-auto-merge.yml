@@ -1,0 +1,41 @@
+name: Dependabot auto-merge
+
+# Hands Dependabot's pull requests to GitHub's auto-merge, so they merge on
+# their own once the checks required on `main` are green.
+#
+# Nothing here merges anything directly: `gh pr merge --auto` only asks GitHub
+# to merge the pull request once it becomes mergeable, and a pull request with
+# a failing required check never does. It stays open to be looked at.
+#
+# Two repository settings carry that guarantee, and auto-merge is unsafe
+# without the second one:
+#
+# 1. Settings -> General -> Pull Requests -> "Allow auto-merge".
+# 2. A ruleset on `main` requiring the checks from CI
+#    (.github/workflows/ci.yml) that run on a pull request: `build`, and the
+#    three `standalone` jobs. With no required check there is nothing for
+#    auto-merge to wait on, and GitHub merges as soon as the queue reaches it.
+
+on:
+  pull_request_target:
+
+permissions: {}
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+    # `pull_request_target` runs this file as it exists on `main`, with a token
+    # that can write. Dependabot's branch is never checked out here, so the
+    # action bumps it proposes never run with that token.
+    - name: Enable auto-merge
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_URL: ${{ github.event.pull_request.html_url }}
+      run: gh pr merge --auto --squash "$PR_URL"
