@@ -1,13 +1,21 @@
+import assert from 'node:assert';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import React from 'react';
 import { format } from 'prettier';
-import { DataTable } from './DataTable.tsx';
-import { processCSV } from '../dataProcessing.ts';
+import { DataTable, rowKeys } from './DataTable.tsx';
+import { processCSV, spreadDuplicateDates } from '../dataProcessing.ts';
+import { defined } from '../testing/assertions.ts';
 import { assertSnapshot } from '../testing/snapshot.ts';
 
 const testFilePath = fileURLToPath(import.meta.url);
+
+const duplicateDatesCsv = `date,value
+2023-01-01,1
+2023-01-02,2
+2023-01-02,3
+2023-01-03,4`;
 
 const sampleCsv = `date,pct_change,amount,category
 2023-01-01,0.15,45.5,High
@@ -49,6 +57,26 @@ test('DataTable renders correctly with styled columns', async t => {
   const rendered = await format(html, { parser: 'html' });
 
   assertSnapshot(t, rendered, { testFilePath, extension: '.html' });
+});
+
+test('DataTable keys rows that share a date apart from each other', () => {
+  const { formattedData } = processCSV(duplicateDatesCsv);
+  const keys = rowKeys(formattedData);
+
+  assert.strictEqual(new Set(keys).size, formattedData.length);
+});
+
+test('DataTable keys a row the same whether or not duplicate dates are spread', () => {
+  const { data, formattedData } = processCSV(duplicateDatesCsv);
+  // How the app feeds the table while "spread duplicate dates" is on: the same
+  // rows, wearing the dates the spread moved them to.
+  const spread = spreadDuplicateDates(data);
+  const spreadFormatted = formattedData.map((row, i) => ({
+    ...row,
+    date: defined(spread[i], 'spread row').date,
+  }));
+
+  assert.deepStrictEqual(rowKeys(spreadFormatted), rowKeys(formattedData));
 });
 
 test('DataTable renders correctly when date column is not the first column', async t => {
