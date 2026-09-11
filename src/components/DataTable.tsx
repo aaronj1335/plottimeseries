@@ -3,6 +3,17 @@ import { isDateColumn, type FormattedDataPoint } from '../dataProcessing.ts';
 import { renderCellValue } from './CellValue.tsx';
 import { cssVar } from '../theme.ts';
 
+/**
+ * A row is identified by where it sits in the data rather than by its date. A
+ * date is neither unique -- rows may share one -- nor stable, since the
+ * "spread duplicate dates" toggle rewrites it. Keyed by date, React cannot pair
+ * the rows it had with the rows it is given when the toggle flips, and leaves
+ * the ones it loses track of in the table beside the rows it renders fresh.
+ */
+export function rowKeys(formattedData: FormattedDataPoint[]): string[] {
+  return formattedData.map((_, index) => String(index));
+}
+
 interface DataTableProps {
   formattedData: FormattedDataPoint[];
   columns: string[];
@@ -21,6 +32,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   const tableRef = useRef<HTMLTableElement>(null);
 
   const pinnedWidths = columnWidths?.length === columns.length ? columnWidths : null;
+  const keys = rowKeys(formattedData);
 
   return (
     <table
@@ -40,7 +52,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           const isHighlighted = hoveredDate && row.date.getTime() === hoveredDate.getTime();
           return (
             <tr
-              key={row.date.getTime()}
+              key={keys[i]}
               style={{
                 backgroundColor: isHighlighted
                   ? cssVar('rowHover')
