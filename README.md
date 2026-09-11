@@ -22,6 +22,44 @@ has four rows on `2026-01-02` and two on `2026-01-04`: with the box checked
 each clump fans out across the day and can be hovered a row at a time, and
 unchecking it collapses the clump back into one vertical line.
 
+### Sharing a whole dataset in a link
+
+`?csv=` puts the CSV in the query string, which is fine for a handful of rows
+and wrong for a dataset: query strings end up in server logs, in `Referer`
+headers and in browser history. For anything bigger there is `#csv=`, which
+carries the CSV gzipped and base64url-encoded in the URL *fragment*. A fragment
+is never sent in a request, so the data stays on the machine that opens the
+link — there is nothing to upload, nothing stored, and so nothing to
+authenticate against.
+
+Building one needs no checkout and no Node, which is the point: anything that
+can run a script here can build a whole report instead. It is `gzip` and
+`base64`, so it works from a machine that has the CSV and nothing else:
+
+```bash
+printf 'https://aaronstacy.com/plottimeseries#csv=%s' \
+  "$(gzip -nc your.csv | base64 | tr -d '\n' | tr '+/' '-_' | tr -d '=')"
+```
+
+With GNU coreutils the encoding is one step, `basenc --base64url -w0`, and
+produces the same bytes.
+
+`gzip -n` is load-bearing. Without it gzip writes the source filename and the
+file's mtime into the header, and both then travel in the link.
+
+How big is "big" depends on how repetitive the data is. Dense numeric series
+compress about 3x, so a 4.5 MB CSV lands at a ~1.5 M character URL — Chrome and
+Firefox open it, Safari does not, and most chat and mail clients truncate far
+sooner. Somewhere around 64k characters a link stops reliably surviving the
+trip. Past that, generate a report and send the file instead:
+
+```bash
+npm run build -- path/to/your/file.csv > report.html
+```
+
+The fragment beats every other source: `#csv=` wins over `?csv=`, which wins
+over a report's inlined data, which wins over `/data.csv`.
+
 ### CLI
 
 Every commit on `main` publishes prebuilt artifacts to the
@@ -174,6 +212,15 @@ and bundle inlined, so it can be locked down tightly:
   CSP ignores `frame-ancestors`, the app refuses to render when it is not the
   top window (`src/frameGuard.ts`). That check travels with the file, so it also
   applies to a report opened from disk.
+- **Decompression limits.** `#csv=` hands attacker-controlled bytes to a gzip
+  decoder, and gzip reaches about 1032:1 — a link small enough to paste into a
+  chat message expands to gigabytes. `src/csvFragment.ts` decompresses as a
+  stream and aborts once the output passes 32 MiB, so a hostile link fails with
+  a message instead of taking the tab with it.
+- **No upload path at all.** The fragment exists so that sharing a dataset does
+  not require a server to store it. There is no endpoint to authenticate, no
+  bucket to leave public, and no credential in the browser — the security
+  property is that the data never leaves the machine that has it.
 - **CI** requests no token scopes by default, pins actions to commit SHAs,
   checks out without persisting credentials, and installs with
   `--ignore-scripts`.
