@@ -11,10 +11,11 @@ name: Dependabot auto-merge
 # without the second one:
 #
 # 1. Settings -> General -> Pull Requests -> "Allow auto-merge".
-# 2. A ruleset on `main` requiring the checks from CI
-#    (.github/workflows/ci.yml) that run on a pull request: `build`, and the
-#    three `standalone` jobs. With no required check there is nothing for
-#    auto-merge to wait on, and GitHub merges as soon as the queue reaches it.
+# 2. A ruleset on `main` requiring the checks from validate
+#    (.github/workflows/validate.yml) that run on a pull request: `validate`,
+#    and the three `standalone` jobs. With no required check there is nothing
+#    for auto-merge to wait on, and GitHub merges as soon as the queue reaches
+#    it.
 
 on:
   pull_request_target:

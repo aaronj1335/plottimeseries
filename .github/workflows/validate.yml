@@ -1,20 +1,21 @@
-name: CI
+name: validate
+
+# Everything that says whether a change is good: `npm run validate`, plus the
+# standalone builds and their smoke tests. Publishing lives in publish.yml, so
+# this badge means "the code is sound", not "the release went out".
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
+  workflow_dispatch:
 
 # No token scopes by default; each job asks for exactly what it needs.
 permissions: {}
 
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
-  build:
+  validate:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,10 +44,16 @@ jobs:
     # egress. See scripts/validate.ts. Produces pages-public/.
     - run: npm run validate
 
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+    # The plain directory, not actions/upload-pages-artifact: publish.yml
+    # downloads this and builds the Pages artifact there, in the run that
+    # actually deploys.
+    - name: Upload the built site
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
+        name: pages-public
         path: pages-public
+        retention-days: 1
+        if-no-files-found: error
 
   standalone:
     strategy:
@@ -101,9 +108,10 @@ jobs:
         fi
         tar -czf "release/plottimeseries-${{ matrix.target }}.tar.gz" -C dist $files
     # The artifact actions stay on v4 rather than jumping to the current major
-    # with the rest: this release flow is new, and `merge-multiple` below is the
-    # kind of input that moves between majors. Dependabot will propose the bump
-    # with its changelog attached, which is a better place to weigh it.
+    # with the rest: this release flow is new, and `merge-multiple` over in
+    # publish.yml is the kind of input that moves between majors. Dependabot
+    # will propose the bump with its changelog attached, which is a better
+    # place to weigh it.
     - name: Upload the standalone executable
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
@@ -115,51 +123,3 @@ jobs:
       with:
         name: plottimeseries-script
         path: dist/plottimeseries.cjs
-
-  release:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [build, standalone]
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-    # `gh` authenticates from GH_TOKEN below, so the checkout is only here for
-    # the repository context and does not need a credential of its own.
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        persist-credentials: false
-    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-      with:
-        path: release
-        pattern: plottimeseries-*
-        merge-multiple: true
-    - name: Publish the latest build
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        gh release delete latest --yes --cleanup-tag || true
-        gh release create latest release/* \
-          --target "$GITHUB_SHA" \
-          --prerelease \
-          --title "Latest build" \
-          --notes "Standalone build of [\`${GITHUB_SHA::7}\`](https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}).
-
-        \`plottimeseries.cjs\` runs on any stable Node.js: \`node plottimeseries.cjs data.csv > report.html\`.
-
-        The per-platform archives hold that same \`plottimeseries.cjs\`, plus executables that need nothing installed at all: \`plottimeseries\`, which embeds Node.js, and \`plottimeseries-compiled\`, the same program compiled to native code by scriptc."
-
-  deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0

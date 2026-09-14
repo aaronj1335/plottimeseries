@@ -17,7 +17,7 @@ updates:
           - minor
           - patch
 
-  # Keeps the SHA pins in .github/workflows/ci.yml current -- pinning without
+  # Keeps the SHA pins in .github/workflows/ current -- pinning without
   # this just means running stale actions forever.
   - package-ecosystem: github-actions
     directory: /

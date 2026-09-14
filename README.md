@@ -1,5 +1,8 @@
 # Time series plotting app and CLI tool
 
+[![validate](https://github.com/aaronj1335/plottimeseries/actions/workflows/validate.yml/badge.svg)](https://github.com/aaronj1335/plottimeseries/actions/workflows/validate.yml)
+[![publish](https://github.com/aaronj1335/plottimeseries/actions/workflows/publish.yml/badge.svg)](https://github.com/aaronj1335/plottimeseries/actions/workflows/publish.yml)
+
 Tool + app for visualizing time series data.
 
 [![Screenshot of time series plot](https://aaronstacy.com/plottimeseries/img/plottimeseries-screen-shot.png)](https://aaronstacy.com/plottimeseries)
@@ -162,15 +165,25 @@ still the column `col1` everywhere else.
 
 ## Developing
 
-Do whatever is in `.github/workflows/ci.yml`, but roughly:
+Do whatever is in `.github/workflows/validate.yml`, but roughly:
 
 1. `npm install`
 2. `npm run dev`
 3. Open `http://localhost:3000` in a web browser
 
-To validate changes, run `npm run validate`. That is the whole of CI in one
-command: `npm audit`, then lint, typecheck, test and a build of `pages-public/`,
-followed by some smoke checks on the result.
+To validate changes, run `npm run validate`. That is the whole of the `validate`
+workflow in one command: `npm audit`, then lint, typecheck, test and a build of
+`pages-public/`, followed by some smoke checks on the result. The same
+`validate` command and workflow name are in
+[finances](https://github.com/aaronj1335/finances),
+[prices](https://github.com/aaronj1335/prices) and
+[stcy-family](https://github.com/aaronj1335/stcy-family).
+
+Once `validate` is green on `main`, the
+[`publish`](.github/workflows/publish.yml) workflow ships exactly those
+artifacts: the standalone builds become the `latest` release, and
+`pages-public/` is deployed to https://aaronstacy.com/plottimeseries. It
+rebuilds nothing.
 
 Everything after the audit runs inside a network namespace with no egress
 (`unshare --net`), so a compromised dependency cannot exfiltrate anything while
