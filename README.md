@@ -26,8 +26,7 @@ also works, but that is sent to the server as a request. To build the URL, you
 can run:
 
 ```bash
-printf 'https://aaronstacy.com/plottimeseries#csv=%s' \
-  "$(gzip -nc your.csv | base64 | tr -d '\n' | tr '+/' '-_' | tr -d '=')"
+printf 'https://aaronstacy.com/plottimeseries#csv=%s' "$(gzip -nc your.csv | base64 | tr -d '\n' | tr '+/' '-_' | tr -d '=')"
 ```
 
 This only works for smaller files, typically < 3 MB or so.

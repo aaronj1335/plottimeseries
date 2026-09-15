@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import {
   EMPTY_CSV,
+  isDateColumn,
   processCSV,
   spreadDuplicateDates,
   type ProcessedCSV,
@@ -44,7 +45,14 @@ function App() {
 
     try {
       const result = processCSV(await readCSV());
-      if (result.data.length === 0) throw new Error('No valid data found in CSV');
+      if (result.data.length === 0) {
+        if (result.columns.length > 0 && !result.columns.some(isDateColumn)) {
+          throw new Error(
+            `No "date" column found in CSV (columns: ${result.columns.join(', ')})`,
+          );
+        }
+        throw new Error('No valid data found in CSV');
+      }
 
       setDataset(result);
       setIsolatedSeries(null);
