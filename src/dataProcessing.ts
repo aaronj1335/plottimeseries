@@ -405,7 +405,7 @@ export function processCSV(csvString: string): ProcessedCSV {
   const { data, columns, columnStyles } = parseCSV(csvString);
 
   if (data.length === 0) {
-    return { data: [], formattedData: [], columns: [], columnStyles };
+    return { data: [], formattedData: [], columns, columnStyles };
   }
 
   const formatters = analyzeColumnFormatters(data, columns, columnStyles);
