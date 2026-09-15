@@ -1,0 +1,98 @@
+name: publish
+
+# Ships what `validate` already built, once it has gone green on main: the
+# standalone builds as the `latest` release, and pages-public/ to GitHub Pages
+# at https://aaronstacy.com/plottimeseries.
+#
+# Split out of validate.yml so the two badges say different things -- a red
+# `validate` means the code is broken, a red `publish` means good code did not
+# make it out. Nothing here rebuilds: both jobs download the artifacts from the
+# `validate` run that triggered them, so what is published is exactly what was
+# checked.
+
+on:
+  workflow_run:
+    workflows: [ validate ]
+    types: [ completed ]
+    branches: [ main ]
+
+permissions: {}
+
+# Serialize, so two pushes landing together can't race on the Pages deployment
+# or on the `latest` tag.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # `workflow_run` also fires for pull request and manual runs of validate.
+    # Only a green push to main publishes.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # Artifacts belong to the triggering run, not this one.
+      actions: read
+    steps:
+    # `gh` authenticates from GH_TOKEN below, so the checkout is only here for
+    # the repository context and does not need a credential of its own.
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ github.event.workflow_run.head_sha }}
+        persist-credentials: false
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        path: release
+        pattern: plottimeseries-*
+        merge-multiple: true
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ github.token }}
+    - name: Publish the latest build
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SHA: ${{ github.event.workflow_run.head_sha }}
+      run: |
+        gh release delete latest --yes --cleanup-tag || true
+        gh release create latest release/* \
+          --target "$SHA" \
+          --prerelease \
+          --title "Latest build" \
+          --notes "Standalone build of [\`${SHA::7}\`](https://github.com/${GITHUB_REPOSITORY}/commit/${SHA}).
+
+        \`plottimeseries.cjs\` runs on any stable Node.js: \`node plottimeseries.cjs data.csv > report.html\`.
+
+        The per-platform archives hold that same \`plottimeseries.cjs\`, plus executables that need nothing installed at all: \`plottimeseries\`, which embeds Node.js, and \`plottimeseries-compiled\`, the same program compiled to native code by scriptc."
+
+  deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      actions: read
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download the site validate built
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        name: pages-public
+        path: pages-public
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ github.token }}
+    # deploy-pages only reads the Pages artifact of the run it is in, so the
+    # directory has to be re-uploaded in that shape here.
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+      with:
+        path: pages-public
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
