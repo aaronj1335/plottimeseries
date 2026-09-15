@@ -15,53 +15,22 @@ Visit https://aaronstacy.com/plottimeseries
 
 You can pass a CSV file as a query parameter like [this](https://aaronstacy.com/plottimeseries?csv=date%2Cpct_change%2Camount%2Ccategory%0A2023-01-01%2C0.15%2C45.5%2CHigh%0A2023-01-02%2C-0.8%2C-99.25%2CLow%0A2023-01-03%2C0.02%2C0.75%2CMedium%0A2023-01-04%2C1.0%2C100%2CHigh%0A2023-01-05%2C-0.33%2C-5.5%2CLow%0A2023-01-06%2C0.5%2C0.05%2CMedium).
 
-You can also upload a CSV file using the button in the upper right corner.
-
-The **Spread Duplicate Dates** checkbox next to that button nudges rows that
-share a date apart along the time axis, so rows on the same date read as
-separate points rather than one hiding the others.
-[This CSV](https://aaronstacy.com/plottimeseries?csv=date%2Cprice%2Ctrade%0A2026-01-01%2C10%2CA%0A2026-01-02%2C4%2CB%0A2026-01-02%2C16%2CC%0A2026-01-02%2C7%2CD%0A2026-01-02%2C13%2CE%0A2026-01-03%2C11%2CF%0A2026-01-04%2C6%2CG%0A2026-01-04%2C14%2CH%0A2026-01-05%2C12%2CI)
-has four rows on `2026-01-02` and two on `2026-01-04`: with the box checked
-each clump fans out across the day and can be hovered a row at a time, and
-unchecking it collapses the clump back into one vertical line.
+You can also upload a CSV file using the button in the upper right corner. The
+data is updated locally, nothing ever leaves your browser.
 
 ### Sharing a whole dataset in a link
 
-`?csv=` puts the CSV in the query string, which is fine for a handful of rows
-and wrong for a dataset: query strings end up in server logs, in `Referer`
-headers and in browser history. For anything bigger there is `#csv=`, which
-carries the CSV gzipped and base64url-encoded in the URL *fragment*. A fragment
-is never sent in a request, so the data stays on the machine that opens the
-link — there is nothing to upload, nothing stored, and so nothing to
-authenticate against.
-
-Building one needs no checkout and no Node, which is the point: anything that
-can run a script here can build a whole report instead. It is `gzip` and
-`base64`, so it works from a machine that has the CSV and nothing else:
+Encode a gzip'd + base64 encoded CSV into the URL fragment `#csv=...` to create
+a link that can be shared. Plain URL encoded text in the `?csv=` query parameter
+also works, but that is sent to the server as a request. To build the URL, you
+can run:
 
 ```bash
 printf 'https://aaronstacy.com/plottimeseries#csv=%s' \
   "$(gzip -nc your.csv | base64 | tr -d '\n' | tr '+/' '-_' | tr -d '=')"
 ```
 
-With GNU coreutils the encoding is one step, `basenc --base64url -w0`, and
-produces the same bytes.
-
-`gzip -n` is load-bearing. Without it gzip writes the source filename and the
-file's mtime into the header, and both then travel in the link.
-
-How big is "big" depends on how repetitive the data is. Dense numeric series
-compress about 3x, so a 4.5 MB CSV lands at a ~1.5 M character URL — Chrome and
-Firefox open it, Safari does not, and most chat and mail clients truncate far
-sooner. Somewhere around 64k characters a link stops reliably surviving the
-trip. Past that, generate a report and send the file instead:
-
-```bash
-npm run build -- path/to/your/file.csv > report.html
-```
-
-The fragment beats every other source: `#csv=` wins over `?csv=`, which wins
-over a report's inlined data, which wins over `/data.csv`.
+This only works for smaller files, typically < 3 MB or so.
 
 ### CLI
 
@@ -85,16 +54,16 @@ Neither of them needs npm, a checkout, or a build:
   ```
 
   All three do the same thing and print the same bytes. `plottimeseries` is a
-  Node.js [single executable application](https://nodejs.org/api/single-executable-applications.html):
-  the script above injected into a copy of the Node.js binary, so it is ~126 MB
-  and starts in ~40 ms. `plottimeseries-compiled` is the same program compiled to
-  native code by [scriptc](https://github.com/vercel-labs/scriptc), with no
-  JavaScript engine in it at all, so it is ~1.7 MB and starts in ~4 ms. Bundling
-  `plottimeseries.cjs` into the archive too means one download can fall back
-  from the compiled executable to plain `node`, for platforms scriptc can't
-  compile for.
+  Node.js [single executable
+  application](https://nodejs.org/api/single-executable-applications.html) of
+  the script above injected into a copy of the Node.js binary.
+  `plottimeseries-compiled` is the same program compiled to native code by
+  [scriptc](https://github.com/vercel-labs/scriptc), with no JavaScript engine
+  in it at all, so it is smaller and starts faster.
 
 Then open `index.html` in a web browser.
+
+### From source
 
 From a checkout the same thing is `npm run build`:
 
@@ -163,6 +132,14 @@ Unrecognized keys and values are ignored, so a typo in a spec cannot break the
 plot. Column names are matched after the spec is stripped, so `col1{...}` is
 still the column `col1` everywhere else.
 
+## Duplicate dates
+
+A lot of time series data just has a date, and frequently those can be
+duplicated, which renders weirdly.  The **Spread Duplicate Dates** checkbox next
+to that button nudges rows that share a date apart along the time axis, so rows
+on the same date read as separate points rather than one hiding the others
+([example](https://aaronstacy.com/plottimeseries?csv=date%2Cprice%2Ctrade%0A2026-01-01%2C10%2CA%0A2026-01-02%2C4%2CB%0A2026-01-02%2C16%2CC%0A2026-01-02%2C7%2CD%0A2026-01-02%2C13%2CE%0A2026-01-03%2C11%2CF%0A2026-01-04%2C6%2CG%0A2026-01-04%2C14%2CH%0A2026-01-05%2C12%2CI)).
+
 ## Developing
 
 Do whatever is in `.github/workflows/validate.yml`, but roughly:
@@ -173,17 +150,7 @@ Do whatever is in `.github/workflows/validate.yml`, but roughly:
 
 To validate changes, run `npm run validate`. That is the whole of the `validate`
 workflow in one command: `npm audit`, then lint, typecheck, test and a build of
-`pages-public/`, followed by some smoke checks on the result. The same
-`validate` command and workflow name are in
-[finances](https://github.com/aaronj1335/finances),
-[prices](https://github.com/aaronj1335/prices) and
-[stcy-family](https://github.com/aaronj1335/stcy-family).
-
-Once `validate` is green on `main`, the
-[`publish`](.github/workflows/publish.yml) workflow ships exactly those
-artifacts: the standalone builds become the `latest` release, and
-`pages-public/` is deployed to https://aaronstacy.com/plottimeseries. It
-rebuilds nothing.
+`pages-public/`, followed by some smoke checks on the result.
 
 Everything after the audit runs inside a network namespace with no egress
 (`unshare --net`), so a compromised dependency cannot exfiltrate anything while
