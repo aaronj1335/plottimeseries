@@ -15,6 +15,12 @@ Visit https://aaronstacy.com/plottimeseries
 
 You can pass a CSV file as a query parameter like [this](https://aaronstacy.com/plottimeseries?csv=date%2Cpct_change%2Camount%2Ccategory%0A2023-01-01%2C0.15%2C45.5%2CHigh%0A2023-01-02%2C-0.8%2C-99.25%2CLow%0A2023-01-03%2C0.02%2C0.75%2CMedium%0A2023-01-04%2C1.0%2C100%2CHigh%0A2023-01-05%2C-0.33%2C-5.5%2CLow%0A2023-01-06%2C0.5%2C0.05%2CMedium).
 
+The CSV needs a column literally named `date` (case-insensitive) with a value
+`Date` can parse; every other column is plotted as a series. A CSV without one
+loads with `No "date" column found in CSV` — rename or derive one from
+whatever column carries time, e.g. turning a `Founded` year into a `date`
+column of `1988-01-01`.
+
 You can also upload a CSV file using the button in the upper right corner.
 
 The **Spread Duplicate Dates** checkbox next to that button nudges rows that
