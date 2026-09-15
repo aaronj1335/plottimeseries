@@ -241,7 +241,8 @@ export function parseCSV(csvString: string): {
       });
       return point;
     })
-    .filter((d): d is DataPoint => d !== null);
+    .filter((d): d is DataPoint => d !== null)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
 
   return { data, columns, columnStyles };
 }

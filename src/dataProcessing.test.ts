@@ -72,6 +72,16 @@ describe('parseCSV', () => {
     assert.strictEqual(defined(data[0]).amount, 45.5);
     assert.strictEqual(defined(data[0]).category, 'High');
   });
+
+  it('should sort rows by date, regardless of input order', () => {
+    const csv = `date,val\n2023-01-03,3\n2023-01-01,1\n2023-01-02,2`;
+    const { data } = parseCSV(csv);
+
+    assert.deepStrictEqual(
+      data.map(d => d.date.toISOString().split('T')[0]),
+      ['2023-01-01', '2023-01-02', '2023-01-03'],
+    );
+  });
 });
 
 describe('analyzeColumnFormatters', () => {
