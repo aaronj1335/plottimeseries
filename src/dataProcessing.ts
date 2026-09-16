@@ -433,6 +433,12 @@ export function processCSV(csvString: string): ProcessedCSV {
             } catch {
               formattedVal = val;
             }
+          } else if (/^https?:\/\/\S+$/i.test(val)) {
+            try {
+              formattedVal = { linkText: val, url: new URL(val) };
+            } catch {
+              formattedVal = val;
+            }
           } else {
             formattedVal = val;
           }

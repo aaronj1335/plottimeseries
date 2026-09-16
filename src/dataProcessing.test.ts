@@ -493,6 +493,22 @@ describe('processCSV', () => {
     assert.strictEqual(defined(formattedData[0]).link, '[Invalid](not-a-url)');
   });
 
+  it('handles plain-text URLs as links', () => {
+    const csv = `date,website\n2023-01-01,http://soto.com/`;
+    const { formattedData } = processCSV(csv);
+
+    const linkData = defined(formattedData[0]).website as LinkData;
+    assert.strictEqual(linkData.linkText, 'http://soto.com/');
+    assert.strictEqual(linkData.url.toString(), 'http://soto.com/');
+  });
+
+  it('does not treat text containing a URL as a link', () => {
+    const csv = `date,note\n2023-01-01,see http://soto.com/ for details`;
+    const { formattedData } = processCSV(csv);
+
+    assert.strictEqual(defined(formattedData[0]).note, 'see http://soto.com/ for details');
+  });
+
   it('handles empty CSV', () => {
     const { formattedData, columns } = processCSV('');
     assert.strictEqual(formattedData.length, 0);
