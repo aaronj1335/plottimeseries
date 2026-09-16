@@ -47,9 +47,7 @@ function App() {
       const result = processCSV(await readCSV());
       if (result.data.length === 0) {
         if (result.columns.length > 0 && !result.columns.some(isDateColumn)) {
-          throw new Error(
-            `No "date" column found in CSV (columns: ${result.columns.join(', ')})`,
-          );
+          throw new Error(`No "date" column found in CSV (columns: ${result.columns.join(', ')})`);
         }
         throw new Error('No valid data found in CSV');
       }
