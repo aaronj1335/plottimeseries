@@ -51,8 +51,53 @@ describe('decodeCSVFragment', () => {
     assert.strictEqual(await decodeCSVFragment(base64url(named)), CSV);
   });
 
-  it('rejects a payload that is not base64url', async () => {
-    await assert.rejects(() => decodeCSVFragment('not base64!'), /not valid base64url/);
+  it('reads a percent-encoded CSV', async () => {
+    assert.strictEqual(await decodeCSVFragment(encodeURIComponent(CSV)), CSV);
+  });
+
+  it('reads a CSV whose commas were left unescaped', async () => {
+    // Commas are legal in a fragment, so a hand-written link often only escapes
+    // the newlines. It is still CSV, because base64url has no comma.
+    assert.strictEqual(await decodeCSVFragment(CSV.split('\n').join('%0A')), CSV);
+  });
+
+  it('reads a plus in a cell as a plus, not as a space', async () => {
+    // What `URLSearchParams` gets wrong: form decoding belongs to a submitted
+    // form, not to a fragment.
+    const plus = 'date,label\n2023-01-01,a+b';
+    assert.strictEqual(await decodeCSVFragment('date,label%0A2023-01-01,a+b'), plus);
+  });
+
+  it('decodes each escape once, so an escaped percent survives', async () => {
+    const percent = 'date,share\n2023-01-01,100%';
+    assert.strictEqual(await decodeCSVFragment(encodeURIComponent(percent)), percent);
+  });
+
+  it('reads a character spelled across several adjacent escapes', async () => {
+    const wide = 'date,caf\u00e9\n2023-01-01,\u20ac1';
+    assert.strictEqual(await decodeCSVFragment(encodeURIComponent(wide)), wide);
+  });
+
+  it('reads a CSV holding a percent that is not a valid escape', async () => {
+    const stray = 'date,share%\n2023-01-01,1';
+    assert.strictEqual(await decodeCSVFragment('date,share%%0A2023-01-01,1'), stray);
+  });
+
+  it('reads base64url whose padding was percent-encoded', async () => {
+    // `encodeURIComponent` escapes `=`, so a link built by passing base64url
+    // through it arrives with `%3D` where the padding was.
+    const padded = Buffer.from(zlib.gzipSync(Buffer.from(CSV, 'utf-8'))).toString('base64');
+    assert.ok(padded.includes('='));
+
+    const urlSafe = padded.split('+').join('-').split('/').join('_');
+    assert.strictEqual(await decodeCSVFragment(encodeURIComponent(urlSafe)), CSV);
+  });
+
+  it('rejects a payload that is base64url-shaped but not valid base64', async () => {
+    // Four characters decode to three bytes, so a length of 1 mod 4 cannot be
+    // base64 of anything -- and with no comma or newline in it, it is not CSV
+    // either.
+    await assert.rejects(() => decodeCSVFragment('AAAAA'), /not valid base64url/);
   });
 
   it('rejects bytes that claim to be gzip but are not', async () => {
