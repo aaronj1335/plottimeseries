@@ -390,7 +390,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         </label>
         {onShare && <ShareButton onShare={onShare} />}
         <button onClick={() => fileInputRef.current?.click()} className="upload-button">
-          Upload CSV
+          Update CSV
         </button>
         <input
           type="file"
