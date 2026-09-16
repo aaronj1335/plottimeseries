@@ -19,8 +19,9 @@ data is updated locally, nothing ever leaves your browser.
 ### Sharing a whole dataset in a link
 
 [An example of this link doesn't work with GitHub Markdown
-rendering][example_csv_hash], but you can find it in [the source of this
-README.md file](/aaronj1335/plottimeseries/blob/main/README.md?plain=1).
+rendering][example_csv_hash], but you can find it in [at the bottom of the
+source of this README.md
+file](/aaronj1335/plottimeseries/blob/main/README.md?plain=1).
 
 Encode a gzip'd + base64 encoded CSV into the URL fragment `#csv=...` to create
 a link that can be shared. Plain URL encoded text in the `?csv=` query parameter
