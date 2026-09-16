@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import * as zlib from 'node:zlib';
 
-import { buildShareURL, shareCSV, type ShareWindow } from './share.ts';
+import { buildShareURL, canShare, shareCSV, type ShareWindow } from './share.ts';
 
 const CSV = `date,value
 2023-01-01,1
@@ -41,6 +41,30 @@ function csvFrom(url: string): string {
   const fragment = new URLSearchParams(new URL(url).hash.slice(1)).get('csv') ?? '';
   return zlib.gunzipSync(Buffer.from(fragment, 'base64url')).toString('utf-8');
 }
+
+describe('canShare', () => {
+  it('shares from a page someone else can open', () => {
+    for (const href of [
+      'https://aaronstacy.com/plottimeseries',
+      'http://127.0.0.1:3000/',
+      // The published site is a generated report too, so being one cannot be
+      // what disqualifies a page.
+      'https://aaronstacy.com/plottimeseries/index.html',
+    ]) {
+      assert.ok(canShare(fakeWindow(href)), href);
+    }
+  });
+
+  it('does not offer a link that only opens on this machine', () => {
+    for (const href of [
+      'file:///home/aaron/report.html',
+      'blob:null/8f0d1f6e-0d3a-4c1e-9d3a-0d3a4c1e9d3a',
+      'data:text/html,<p>hi</p>',
+    ]) {
+      assert.ok(!canShare(fakeWindow(href)), href);
+    }
+  });
+});
 
 describe('buildShareURL', () => {
   it('carries the CSV back to the same page', async () => {

@@ -24,6 +24,22 @@ export interface ShareWindow {
 }
 
 /**
+ * Protocols where a link to this page is worth anything to the person you send
+ * it to. A report built by the CLI and opened off disk is the case this rules
+ * out: its `file:///home/you/report.html#csv=...` link carries the whole
+ * dataset and still only opens for whoever already has that file at that path.
+ *
+ * Being a report is deliberately not the test. The published site is itself a
+ * report -- same inlined `__INITIAL_CSV__` -- and sharing from it is the point.
+ */
+const SHAREABLE_PROTOCOLS = ['http:', 'https:'];
+
+/** Whether a link to this page would reach anybody, so the button should show. */
+export function canShare(win: ShareWindow): boolean {
+  return SHAREABLE_PROTOCOLS.includes(new URL(win.location.href).protocol);
+}
+
+/**
  * This page, carrying the whole dataset in its fragment.
  *
  * Any `?csv=` is dropped rather than carried along: the fragment outranks it

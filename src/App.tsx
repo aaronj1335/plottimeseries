@@ -11,7 +11,7 @@ import { TimeSeriesChart } from './components/TimeSeriesChart.tsx';
 import { HoverDetails } from './components/HoverDetails.tsx';
 import { DataTable } from './components/DataTable.tsx';
 import { getCSVData } from './data.ts';
-import { shareCSV } from './share.ts';
+import { canShare, shareCSV } from './share.ts';
 import { cssVar } from './theme.ts';
 import { type ChartOptions, getChartOptions } from './chartOptions.ts';
 
@@ -32,6 +32,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   const chartOptions = useMemo(() => getChartOptions(window), []);
+  // A report opened off disk has nobody to share with, so it gets no button.
+  const shareable = useMemo(() => canShare(window), []);
 
   const [columnWidths, setColumnWidths] = useState<number[] | null>(null);
 
@@ -137,7 +139,7 @@ function App() {
           onToggleSpreadDates={() => setSpreadDates(!spreadDates)}
           columnColors={columnColors}
           onFileUpload={handleFileUpload}
-          onShare={handleShare}
+          onShare={shareable ? handleShare : null}
           columnStyles={columnStyles}
           chartOptions={chartOptions}
         />

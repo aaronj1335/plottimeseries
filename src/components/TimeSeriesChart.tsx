@@ -30,7 +30,8 @@ interface TimeSeriesChartProps {
   onToggleSpreadDates: () => void;
   columnColors: Record<string, string>;
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onShare: () => Promise<ShareOutcome>;
+  /** `null` where a link to this page would not open for anyone else. */
+  onShare: (() => Promise<ShareOutcome>) | null;
   columnStyles?: ColumnStyles;
   chartOptions?: ChartOptions;
 }
@@ -387,7 +388,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           <input type="checkbox" checked={spreadDates} onChange={onToggleSpreadDates} /> Spread
           Duplicate Dates
         </label>
-        <ShareButton onShare={onShare} />
+        {onShare && <ShareButton onShare={onShare} />}
         <button onClick={() => fileInputRef.current?.click()} className="upload-button">
           Upload CSV
         </button>

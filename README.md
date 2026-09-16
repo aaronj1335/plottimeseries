@@ -28,7 +28,8 @@ The **Share Link** button in the upper right builds that link out of whatever
 the page is currently plotting -- uploaded file included -- and copies it to
 your clipboard. The CSV is gzip'd and encoded in the browser, so the data still
 never leaves your machine. (If the clipboard is not available, the link is put
-in the address bar instead.)
+in the address bar instead.) A report opened from disk has no button: its
+`file://` link would only open for someone who already has that file.
 
 The link itself is a gzip'd + base64 encoded CSV in the URL fragment
 `#csv=...`. Plain URL encoded text in the `?csv=` query parameter also works,
