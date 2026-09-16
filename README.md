@@ -130,6 +130,8 @@ date,ratio{type: percent, places: 2},revenue{type: currency, color: #ff7f0e},id{
 2026-01-01,0.7,1234.5,A-1
 ```
 
+([example](https://aaronstacy.com/plottimeseries?csv=date%2Cratio%7Btype%3A%20percent%2C%20places%3A%202%7D%2Crevenue%7Btype%3A%20currency%2C%20color%3A%20%23ff7f0e%7D%2Cid%7Bplot%3A%20false%2C%20label%3A%20'Trade%20ID'%7D%0A2026-01-01%2C0.7%2C1234.5%2CA-1))
+
 Unrecognized keys and values are ignored, so a typo in a spec cannot break the
 plot. Column names are matched after the spec is stripped, so `col1{...}` is
 still the column `col1` everywhere else.
