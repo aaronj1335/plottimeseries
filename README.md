@@ -13,8 +13,8 @@ Tool + app for visualizing time series data.
 
 Visit https://aaronstacy.com/plottimeseries
 
-You can also upload a CSV file using the button in the upper right corner, and
-share what you are looking at with the button next to it. The data is updated
+You can also update the CSV file using the button in the upper right corner, and
+share what you are looking at with the button next to it. The data is read
 locally, nothing ever leaves your browser.
 
 ### Sharing a whole dataset in a link
@@ -203,10 +203,10 @@ and bundle inlined, so it can be locked down tightly:
   chat message expands to gigabytes. `src/csvFragment.ts` decompresses as a
   stream and aborts once the output passes 32 MiB, so a hostile link fails with
   a message instead of taking the tab with it.
-- **No upload path at all.** The fragment exists so that sharing a dataset does
-  not require a server to store it. There is no endpoint to authenticate, no
-  bucket to leave public, and no credential in the browser — the security
-  property is that the data never leaves the machine that has it.
+- **Nothing is ever sent to a server.** The fragment exists so that sharing a
+  dataset does not require a server to store it. There is no endpoint to
+  authenticate, no bucket to leave public, and no credential in the browser —
+  the security property is that the data never leaves the machine that has it.
 - **CI** requests no token scopes by default, pins actions to commit SHAs,
   checks out without persisting credentials, and installs with
   `--ignore-scripts`.
