@@ -13,8 +13,9 @@ Tool + app for visualizing time series data.
 
 Visit https://aaronstacy.com/plottimeseries
 
-You can also upload a CSV file using the button in the upper right corner. The
-data is updated locally, nothing ever leaves your browser.
+You can also upload a CSV file using the button in the upper right corner, and
+share what you are looking at with the button next to it. The data is updated
+locally, nothing ever leaves your browser.
 
 ### Sharing a whole dataset in a link
 
@@ -23,10 +24,16 @@ rendering][example_csv_hash], but you can find it in [at the bottom of the
 source of this README.md
 file](/aaronj1335/plottimeseries/blob/main/README.md?plain=1).
 
-Encode a gzip'd + base64 encoded CSV into the URL fragment `#csv=...` to create
-a link that can be shared. Plain URL encoded text in the `?csv=` query parameter
-also works, but that is sent to the server as a request. To build the URL, you
-can run:
+The **Share Link** button in the upper right builds that link out of whatever
+the page is currently plotting -- uploaded file included -- and copies it to
+your clipboard. The CSV is gzip'd and encoded in the browser, so the data still
+never leaves your machine. (If the clipboard is not available, the link is put
+in the address bar instead.)
+
+The link itself is a gzip'd + base64 encoded CSV in the URL fragment
+`#csv=...`. Plain URL encoded text in the `?csv=` query parameter also works,
+but that is sent to the server as a request. To build the URL from a shell
+instead, you can run:
 
 ```bash
 printf 'https://aaronstacy.com/plottimeseries#csv=%s' "$(gzip -nc your.csv | base64 | tr -d '\n' | tr '+/' '-_' | tr -d '=')"

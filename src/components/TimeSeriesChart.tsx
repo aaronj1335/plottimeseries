@@ -3,6 +3,8 @@ import * as d3 from 'd3';
 import { type ColumnStyles, type DataPoint, isSeriesColumn } from '../dataProcessing.ts';
 import type { ChartOptions } from '../chartOptions.ts';
 import { subdivideGridPositions } from '../gridLines.ts';
+import { ShareButton } from './ShareButton.tsx';
+import type { ShareOutcome } from '../share.ts';
 import { cssVar, THEME } from '../theme.ts';
 
 const CLIP_ID = 'plot-area-clip';
@@ -28,6 +30,7 @@ interface TimeSeriesChartProps {
   onToggleSpreadDates: () => void;
   columnColors: Record<string, string>;
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onShare: () => Promise<ShareOutcome>;
   columnStyles?: ColumnStyles;
   chartOptions?: ChartOptions;
 }
@@ -44,6 +47,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   onToggleSpreadDates,
   columnColors,
   onFileUpload,
+  onShare,
   columnStyles = {},
   chartOptions = {},
 }) => {
@@ -383,6 +387,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           <input type="checkbox" checked={spreadDates} onChange={onToggleSpreadDates} /> Spread
           Duplicate Dates
         </label>
+        <ShareButton onShare={onShare} />
         <button onClick={() => fileInputRef.current?.click()} className="upload-button">
           Upload CSV
         </button>

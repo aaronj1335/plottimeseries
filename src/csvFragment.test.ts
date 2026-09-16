@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import * as zlib from 'node:zlib';
 
-import { MAX_DECOMPRESSED_BYTES, decodeCSVFragment } from './csvFragment.ts';
+import { MAX_DECOMPRESSED_BYTES, decodeCSVFragment, encodeCSVFragment } from './csvFragment.ts';
 
 const CSV = `date,value
 2023-01-01,1
@@ -70,5 +70,42 @@ describe('decodeCSVFragment', () => {
 
   it('caps at MAX_DECOMPRESSED_BYTES by default', () => {
     assert.strictEqual(MAX_DECOMPRESSED_BYTES, 32 * 1024 * 1024);
+  });
+});
+
+describe('encodeCSVFragment', () => {
+  it('writes gzip, so the link stays short enough to paste', async () => {
+    const encoded = await encodeCSVFragment(CSV);
+    const bytes = Buffer.from(encoded, 'base64url');
+
+    assert.deepStrictEqual([bytes[0], bytes[1]], [0x1f, 0x8b]);
+    assert.strictEqual(zlib.gunzipSync(bytes).toString('utf-8'), CSV);
+  });
+
+  it('writes the alphabet a URL fragment can carry unescaped', async () => {
+    // Every byte value, so the encoder cannot avoid the two characters
+    // standard base64 has that base64url does not.
+    const everyByte = String.fromCharCode(...Array.from({ length: 256 }, (_, i) => i));
+    const encoded = await encodeCSVFragment(everyByte);
+
+    assert.match(encoded, /^[A-Za-z0-9_-]+$/);
+    assert.strictEqual(encodeURIComponent(encoded), encoded);
+  });
+
+  it('round-trips through the decoder', async () => {
+    for (const text of [CSV, '', 'date,café\n2023-01-01,€\n']) {
+      assert.strictEqual(await decodeCSVFragment(await encodeCSVFragment(text)), text);
+    }
+  });
+
+  it('round-trips a CSV far past one argument per byte', async () => {
+    // A megabyte of rows: enough that encoding it a byte at a time, as one call
+    // per chunk of the compressed output, would blow the argument stack.
+    const rows: string[] = ['date,value'];
+    for (let i = 0; i < 90000; i++) rows.push(`2023-01-01,${i}`);
+    const wide = rows.join('\n');
+    assert.ok(wide.length > 1024 * 1024);
+
+    assert.strictEqual(await decodeCSVFragment(await encodeCSVFragment(wide)), wide);
   });
 });
