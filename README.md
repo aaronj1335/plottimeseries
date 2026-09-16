@@ -114,23 +114,28 @@ date,col1{type:'decimal'\, places: 2},col2
 date,"col1{type: decimal, places: 2}",col2
 ```
 
-| Key | Values | Effect |
-| --- | --- | --- |
-| `type` | `percent`, `decimal`, `integer`, `currency` | How numbers are formatted, instead of guessing from the data range |
-| `places` | integer 0-20 | Decimal places (`decimals` also works) |
-| `currency` | ISO code, e.g. `eur` | Currency for `type: currency`, defaults to `USD` |
-| `color` | any CSS color | Line and legend color, instead of the generated one |
-| `label` | any text | Header text, instead of the prettified column name |
-| `plot` | `false` | Keep the column in the tables but leave it off the plot |
+| Key | Values | Effect | Example |
+| --- | --- | --- | --- |
+| `type` | `percent`, `decimal`, `integer`, `currency` | How numbers are formatted, instead of guessing from the data range | [all four](https://aaronstacy.com/plottimeseries?csv=date%2Cshare%7Btype%3A%20percent%7D%2Creading%7Btype%3A%20decimal%7D%2Ccount%7Btype%3A%20integer%7D%2Ccost%7Btype%3A%20currency%7D%0A2026-01-01%2C0.42%2C3.14159%2C1207.6%2C1999.5%0A2026-01-02%2C0.55%2C2.71828%2C1584.2%2C2450.75%0A2026-01-03%2C0.38%2C1.41421%2C1042.9%2C1875%0A2026-01-04%2C0.61%2C2.23607%2C1733.4%2C2610.25%0A) |
+| `places` | integer 0-20 | Decimal places (`decimals` also works) | [0 vs 4](https://aaronstacy.com/plottimeseries?csv=date%2Ccoarse%7Bplaces%3A%200%7D%2Cfine%7Bplaces%3A%204%7D%0A2026-01-01%2C3.14159%2C3.14159%0A2026-01-02%2C4.66920%2C4.66920%0A2026-01-03%2C2.71828%2C2.71828%0A2026-01-04%2C5.29174%2C5.29174%0A) |
+| `currency` | ISO code, e.g. `eur` | Currency for `type: currency`, defaults to `USD` | [eur and jpy](https://aaronstacy.com/plottimeseries?csv=date%2Ceuros%7Btype%3A%20currency%2C%20currency%3A%20eur%7D%2Cyen%7Btype%3A%20currency%2C%20currency%3A%20jpy%7D%0A2026-01-01%2C1234.5%2C1200%0A2026-01-02%2C2310.25%2C2600%0A2026-01-03%2C1875.4%2C1900%0A2026-01-04%2C2640.75%2C2900%0A) |
+| `color` | any CSS color | Line and legend color, instead of the generated one | [named and hex](https://aaronstacy.com/plottimeseries?csv=date%2Ctemperature%7Bcolor%3A%20crimson%7D%2Chumidity%7Bcolor%3A%20%2317becf%7D%0A2026-01-01%2C21.4%2C63%0A2026-01-02%2C24.1%2C58%0A2026-01-03%2C19.8%2C71%0A2026-01-04%2C26.3%2C49%0A) |
+| `label` | any text | Header text, instead of the prettified column name | [`avg_temp_c` renamed](https://aaronstacy.com/plottimeseries?csv=date%2Cavg_temp_c%7Blabel%3A%20%27Average%20temperature%27%7D%0A2026-01-01%2C21.4%0A2026-01-02%2C24.1%0A2026-01-03%2C19.8%0A2026-01-04%2C26.3%0A) |
+| `plot` | `false` | Keep the column in the tables but leave it off the plot | [`volume` in the table only](https://aaronstacy.com/plottimeseries?csv=date%2Cprice%2Cvolume%7Bplot%3A%20false%7D%0A2026-01-01%2C10.5%2C120000%0A2026-01-02%2C12.25%2C98000%0A2026-01-03%2C11.4%2C143000%0A2026-01-04%2C13.8%2C110000%0A) |
 
-For example:
+For example
+([open it](https://aaronstacy.com/plottimeseries?csv=date%2Cratio%7Btype%3A%20percent%2C%20places%3A%202%7D%2Crevenue%7Btype%3A%20currency%2C%20color%3A%20%23d62728%7D%2Cid%7Bplot%3A%20false%2C%20label%3A%20%27Trade%20ID%27%7D%0A2026-01-01%2C0.7%2C1234.5%2CA-1%0A2026-01-02%2C0.62%2C2310.25%2CA-2%0A2026-01-03%2C0.81%2C1875.4%2CA-3%0A2026-01-04%2C0.55%2C2640.75%2CA-4%0A)):
 
 ```csv
-date,ratio{type: percent, places: 2},revenue{type: currency, color: #ff7f0e},id{plot: false, label: 'Trade ID'}
+date,ratio{type: percent, places: 2},revenue{type: currency, color: #d62728},id{plot: false, label: 'Trade ID'}
 2026-01-01,0.7,1234.5,A-1
+2026-01-02,0.62,2310.25,A-2
+2026-01-03,0.81,1875.4,A-3
+2026-01-04,0.55,2640.75,A-4
 ```
 
-([example](https://aaronstacy.com/plottimeseries?csv=date%2Cratio%7Btype%3A%20percent%2C%20places%3A%202%7D%2Crevenue%7Btype%3A%20currency%2C%20color%3A%20%23ff7f0e%7D%2Cid%7Bplot%3A%20false%2C%20label%3A%20'Trade%20ID'%7D%0A2026-01-01%2C0.7%2C1234.5%2CA-1))
+Those links all put the CSV in the `?csv=` query parameter as plain URL-encoded
+text, so they can be pasted into a URL decoder to see exactly what they set.
 
 Unrecognized keys and values are ignored, so a typo in a spec cannot break the
 plot. Column names are matched after the spec is stripped, so `col1{...}` is
