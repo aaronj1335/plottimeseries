@@ -28,6 +28,51 @@ test('getCSVData prefers the fragment over every other source', async () => {
   assert.strictEqual(result, TEST_CSV);
 });
 
+test('getCSVData reads a percent-encoded CSV from the fragment', async () => {
+  const win = {
+    location: {
+      href: `http://localhost:3000/#csv=${encodeURIComponent(TEST_CSV)}`,
+    },
+    __INITIAL_CSV__: 'csv-from-window',
+  } as unknown as Window;
+
+  const loadDefault = () => Promise.resolve('csv-from-fetch');
+
+  const result = await getCSVData(win, loadDefault);
+  assert.strictEqual(result, TEST_CSV);
+});
+
+test('getCSVData decodes the fragment exactly once', async () => {
+  // A cell holding the literal text `%0A`. Decoding here and again in
+  // `decodeCSVFragment` would turn it into a row break.
+  const csv = 'date,value,note\n2026-01-01,1,escape is %0A';
+  const win = {
+    location: {
+      href: `http://localhost:3000/#csv=${encodeURIComponent(csv)}`,
+    },
+  } as unknown as Window;
+
+  const loadDefault = () => Promise.resolve('csv-from-fetch');
+
+  const result = await getCSVData(win, loadDefault);
+  assert.strictEqual(result, csv);
+});
+
+test('getCSVData does not form-decode the fragment', async () => {
+  // A link that spells a `+` rather than escaping it means a `+`: form
+  // decoding, which would read it as a space, belongs to a submitted form.
+  const win = {
+    location: {
+      href: 'http://localhost:3000/#csv=date,label%0A2026-01-01,a+b',
+    },
+  } as unknown as Window;
+
+  const loadDefault = () => Promise.resolve('csv-from-fetch');
+
+  const result = await getCSVData(win, loadDefault);
+  assert.strictEqual(result, 'date,label\n2026-01-01,a+b');
+});
+
 test('getCSVData ignores a fragment that is not the csv key', async () => {
   const win = {
     location: {

@@ -1,5 +1,6 @@
 /**
- * The `#csv=` fragment: base64url bytes, gzipped or not, encoded and decoded.
+ * The `#csv=` fragment: percent-encoded CSV, or base64url bytes that may be
+ * gzipped, encoded and decoded.
  *
  * A URL fragment is the only place a large CSV can ride in a link without a
  * server to store it. Browsers never put it in a request, so the data is not
@@ -7,6 +8,14 @@
  * then need its own access control -- which is why this exists alongside
  * `?csv=` rather than as a bigger version of it. Everything past the `#` stays
  * on the machine that opens the link.
+ *
+ * Which of the two encodings a link uses is read off the payload rather than
+ * declared: base64url spells everything in `A-Z a-z 0-9 - _ =`, and a CSV needs
+ * a comma to separate its date column from a value column, so a payload holding
+ * anything outside that alphabet is CSV text and never a mangled base64url
+ * string. Percent-encoding costs about three bytes per delimiter, so it suits
+ * the small hand-written link that `?csv=` already takes; the gzipped form is
+ * what makes a whole dataset fit.
  *
  * The cost is that the payload is attacker-controlled input handed to a
  * decompressor, so `MAX_DECOMPRESSED_BYTES` is load-bearing rather than
@@ -27,6 +36,32 @@
 export const MAX_DECOMPRESSED_BYTES = 32 * 1024 * 1024;
 
 const GZIP_MAGIC = [0x1f, 0x8b];
+
+/** The base64url alphabet, plus the `=` padding that is optional in a link. */
+const BASE64URL = /^[A-Za-z0-9\-_]*={0,2}$/;
+
+/**
+ * One run of adjacent escapes, decoded together because a single character can
+ * span several of them: `%E2%82%AC` is one euro sign, not three.
+ */
+const PERCENT_ESCAPES = /(?:%[0-9A-Fa-f]{2})+/g;
+
+function percentDecode(encoded: string): string {
+  // Escape by escape rather than `decodeURIComponent` over the whole string,
+  // which is all-or-nothing: a cell holding a bare `%` -- `50% of target` --
+  // would throw and leave every `%0A` in the link literal, so one unescaped
+  // character in one cell would cost the newlines in every row. Base64url has
+  // no `%` at all, so nothing well-formed reaches this either way.
+  return encoded.replace(PERCENT_ESCAPES, run => {
+    try {
+      return decodeURIComponent(run);
+    } catch {
+      // Well-formed escapes that spell no character, such as a truncated UTF-8
+      // sequence. They are what the link said, so that is what is plotted.
+      return run;
+    }
+  });
+}
 
 function decodeBase64Url(encoded: string): Uint8Array<ArrayBuffer> {
   // `atob` wants standard base64. Padding is optional: base64url of any byte
@@ -96,7 +131,16 @@ export async function decodeCSVFragment(
   encoded: string,
   limit: number = MAX_DECOMPRESSED_BYTES,
 ): Promise<string> {
-  const bytes = decodeBase64Url(encoded);
+  // Percent-decoding first, so that a base64url payload whose `=` padding was
+  // escaped to `%3D` -- what `encodeURIComponent` does to it -- is still read
+  // as base64url rather than as CSV that happens to have no commas in it.
+  const text = percentDecode(encoded);
+
+  // CSV text carries at least the comma between its date column and a value
+  // column, so it cannot be mistaken for base64url.
+  if (!BASE64URL.test(text)) return text;
+
+  const bytes = decodeBase64Url(text);
   // Uncompressed payloads need no cap: the URL that carried them is the cap.
   if (!isGzip(bytes)) return new TextDecoder().decode(bytes);
   return inflate(bytes, limit);

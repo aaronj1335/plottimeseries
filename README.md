@@ -42,6 +42,20 @@ printf 'https://aaronstacy.com/plottimeseries#csv=%s' "$(gzip -nc your.csv | bas
 
 This only works for smaller files, typically < 3 MB or so.
 
+`#csv=...` also takes plain URL encoded text, the same thing `?csv=...` takes,
+so a small hand-written link can skip the gzip pipeline and still keep the data
+out of the request:
+
+```bash
+printf 'https://aaronstacy.com/plottimeseries#csv=%s' "$(jq -sRr @uri < your.csv)"
+```
+
+Which of the two a link uses is read off the payload, with no flag to set:
+base64url spells everything in `A-Z a-z 0-9 - _ =`, and a CSV needs at least the
+comma between its date column and a value column, so anything holding a
+character outside that alphabet is read as text. Gzip is what makes a whole
+dataset fit; URL encoding costs about three bytes per comma and newline.
+
 ### CLI
 
 Every commit on `main` publishes prebuilt artifacts to the
