@@ -11,6 +11,7 @@ import { TimeSeriesChart } from './components/TimeSeriesChart.tsx';
 import { HoverDetails } from './components/HoverDetails.tsx';
 import { DataTable } from './components/DataTable.tsx';
 import { getCSVData } from './data.ts';
+import { canShare, shareCSV } from './share.ts';
 import { cssVar } from './theme.ts';
 import { type ChartOptions, getChartOptions } from './chartOptions.ts';
 
@@ -24,10 +25,15 @@ declare global {
 function App() {
   const [dataset, setDataset] = useState<ProcessedCSV>(EMPTY_CSV);
   const { data, formattedData, columns, columnStyles } = dataset;
+  // The text as it was read, not as it was parsed: a shared link should reopen
+  // the same CSV, comments, column options and all.
+  const [csv, setCSV] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const chartOptions = useMemo(() => getChartOptions(window), []);
+  // A report opened off disk has nobody to share with, so it gets no button.
+  const shareable = useMemo(() => canShare(window), []);
 
   const [columnWidths, setColumnWidths] = useState<number[] | null>(null);
 
@@ -44,7 +50,8 @@ function App() {
     setError(null);
 
     try {
-      const result = processCSV(await readCSV());
+      const text = await readCSV();
+      const result = processCSV(text);
       if (result.data.length === 0) {
         if (result.columns.length > 0 && !result.columns.some(isDateColumn)) {
           throw new Error(`No "date" column found in CSV (columns: ${result.columns.join(', ')})`);
@@ -53,6 +60,7 @@ function App() {
       }
 
       setDataset(result);
+      setCSV(text);
       setIsolatedSeries(null);
       setHoveredDate(null);
     } catch (err: unknown) {
@@ -99,6 +107,8 @@ function App() {
     setIsolatedSeries(prev => (prev === series ? null : series));
   };
 
+  const handleShare = useCallback(() => shareCSV(window, csv), [csv]);
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) void loadCSV(() => file.text());
@@ -129,6 +139,7 @@ function App() {
           onToggleSpreadDates={() => setSpreadDates(!spreadDates)}
           columnColors={columnColors}
           onFileUpload={handleFileUpload}
+          onShare={shareable ? handleShare : null}
           columnStyles={columnStyles}
           chartOptions={chartOptions}
         />

@@ -104,8 +104,8 @@ table.data-table td {
   text-overflow: ellipsis;
 }
 
-.upload-button {
-  background-color: var(--accent);
+.upload-button,
+.share-button {
   color: var(--text);
   border: none;
   padding: 0.4rem 0.8rem;
@@ -118,10 +118,36 @@ table.data-table td {
   font-weight: 500;
 }
 
+.upload-button {
+  background-color: var(--accent);
+}
+
 .upload-button:hover {
   background-color: var(--accent-hover);
 }
 
-.upload-button:active {
+/* Outlined rather than filled: uploading is what the toolbar is mostly for,
+   and two solid buttons side by side would not say which. */
+.share-button {
+  background-color: transparent;
+  border: 1px solid var(--rule-strong);
+  /* Wide enough for every label the button swaps in, so the toolbar does not
+     shift under the cursor between "Share Link" and "Copied!". */
+  min-width: 6.5rem;
+}
+
+.share-button:hover:not(:disabled) {
+  background-color: var(--panel);
+  border-color: var(--rule-hover);
+}
+
+.share-button:disabled {
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.upload-button:active,
+.share-button:active:not(:disabled) {
   transform: translateY(1px);
 }

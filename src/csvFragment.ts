@@ -1,5 +1,5 @@
 /**
- * Decoding for the `#csv=` fragment: base64url bytes, gzipped or not.
+ * The `#csv=` fragment: base64url bytes, gzipped or not, encoded and decoded.
  *
  * A URL fragment is the only place a large CSV can ride in a link without a
  * server to store it. Browsers never put it in a request, so the data is not
@@ -13,10 +13,10 @@
  * defensive tidiness: gzip reaches about 1032:1, so a link small enough to
  * paste into a chat message expands to gigabytes and takes the tab with it.
  *
- * There is deliberately no encoder here. Anything that can run a script in this
- * repository can build a whole self-contained report instead, so the encoding
- * is documented as a `gzip | base64 | tr` pipeline in the README -- which also
- * works from a machine that has the CSV and nothing else.
+ * The encoder is the share button's half of that: it is the same `gzip |
+ * base64 | tr` pipeline the README documents for a shell, run in the tab that
+ * already holds the data, so sharing what is on screen does not mean going
+ * back to the file it came from.
  */
 
 /**
@@ -100,4 +100,64 @@ export async function decodeCSVFragment(
   // Uncompressed payloads need no cap: the URL that carried them is the cap.
   if (!isGzip(bytes)) return new TextDecoder().decode(bytes);
   return inflate(bytes, limit);
+}
+
+// `String.fromCharCode(...bytes)` is one call with one argument per byte, so a
+// whole megabyte-sized CSV passed at once overflows the argument stack. 32 KiB
+// at a time is well under every engine's limit.
+const BTOA_CHUNK_BYTES = 32 * 1024;
+
+function encodeBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += BTOA_CHUNK_BYTES) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + BTOA_CHUNK_BYTES));
+  }
+
+  // Padding is dropped rather than percent-encoded: `=` is legal in a fragment,
+  // but `decodeBase64Url` does not need it, and the link is shorter without it.
+  return btoa(binary).split('+').join('-').split('/').join('_').split('=').join('');
+}
+
+async function deflate(text: string): Promise<Uint8Array> {
+  if (typeof CompressionStream === 'undefined') {
+    throw new Error('This browser cannot build compressed links: it has no CompressionStream.');
+  }
+
+  // Same shape as `inflate` above: `BufferSource` on the writable side, and the
+  // chunk type named on `pipeThrough` so the `any` readable side stops there.
+  const plain = new ReadableStream<BufferSource>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(text));
+      controller.close();
+    },
+  });
+
+  const reader = plain.pipeThrough<Uint8Array>(new CompressionStream('gzip')).getReader();
+
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    total += value.byteLength;
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+/**
+ * The inverse of `decodeCSVFragment`, always compressing: a CSV is repetitive
+ * enough that gzip is the difference between a link that pastes into a chat
+ * message and one that does not.
+ */
+export async function encodeCSVFragment(csv: string): Promise<string> {
+  return encodeBase64Url(await deflate(csv));
 }
